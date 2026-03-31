@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.9.0
+version: 1.9.1
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -86,12 +86,11 @@ export SOLANA_SECRET_KEY="base58-or-[1,2,3,...]"
 
 Option B: Coinbase AWAL
 ```bash
-# Install Coinbase AWAL skill (shortcut)
-npx skills add coinbase/agentic-wallet-skills
 export X402_USE_AWAL=1
 ```
 
 Use private-key mode for ERC-8004 wallet-first registration. AWAL remains useful for x402 payment flows.
+If your runtime supports Coinbase Agentic Wallet, install or enable it separately in that runtime before turning on `X402_USE_AWAL`.
 
 ### 3) Optional Dashboard / MCP Mode
 
@@ -115,6 +114,7 @@ Keep the direct scripts for:
 
 Security note: scripts read only explicit process environment variables. `.env` files are not auto-loaded.
 Install note: no secret environment variable is globally required for installation. Set only the subset needed for the runbook you are using.
+Read-only note: marketplace browsing and listing inspection do not require any signing key.
 
 ---
 
