@@ -23,8 +23,13 @@ from wallet_signing import is_awal_mode, load_wallet_address
 API_BASE = "https://api.x402layer.cc"
 
 
-def _wants_help(argv: list[str]) -> bool:
-    return len(argv) >= 2 and argv[1] in {"-h", "--help"}
+def _print_usage() -> None:
+    print("=" * 60)
+    print("PROVIDER MODE: Top up YOUR OWN endpoint credits")
+    print("=" * 60)
+    print("\nUsage: python topup_endpoint.py <your_endpoint_slug> <amount_usd>")
+    print("Example: python topup_endpoint.py my-weather-api 10")
+    print("\nRequired env: X_API_KEY (or API_KEY)")
 
 
 def _load_api_key() -> str:
@@ -114,17 +119,12 @@ def topup_endpoint(endpoint_slug: str, amount_usd: float) -> dict:
 
 
 def main() -> None:
-    if _wants_help(sys.argv):
-        print(__doc__.strip())
-        return
+    if len(sys.argv) >= 2 and sys.argv[1] in {"-h", "--help"}:
+        _print_usage()
+        sys.exit(0)
 
     if len(sys.argv) < 3:
-        print("=" * 60)
-        print("PROVIDER MODE: Top up YOUR OWN endpoint credits")
-        print("=" * 60)
-        print("\nUsage: python topup_endpoint.py <your_endpoint_slug> <amount_usd>")
-        print("Example: python topup_endpoint.py my-weather-api 10")
-        print("\nRequired env: X_API_KEY (or API_KEY)")
+        _print_usage()
         sys.exit(1)
 
     result = topup_endpoint(sys.argv[1], float(sys.argv[2]))

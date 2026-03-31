@@ -22,8 +22,9 @@ import requests
 API_BASE = "https://api.x402layer.cc"
 
 
-def _wants_help(argv: list[str]) -> bool:
-    return len(argv) >= 2 and argv[1] in {"-h", "--help"}
+def _print_usage() -> None:
+    print("Usage: python check_credits.py <endpoint_slug>")
+    print("Example: python check_credits.py weather-data")
 
 
 def load_wallet() -> str:
@@ -56,12 +57,12 @@ def check_credits(endpoint_slug: str) -> dict:
 
 
 def main() -> None:
-    if _wants_help(sys.argv):
-        print(__doc__.strip())
-        return
+    if len(sys.argv) >= 2 and sys.argv[1] in {"-h", "--help"}:
+        _print_usage()
+        sys.exit(0)
 
     if len(sys.argv) < 2:
-        print("Usage: python check_credits.py <endpoint_slug>")
+        _print_usage()
         sys.exit(1)
 
     try:

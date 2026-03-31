@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Thin AWAL CLI wrapper for Singularity skill users.
+Thin AWAL CLI wrapper for x402-layer agents.
 
-This wrapper keeps the portable Python-first workflow intact while allowing
-agents to use Coinbase Agentic Wallet (AWAL) commands without embedding
-secrets.
+This wrapper keeps x402-layer Python-first workflows while allowing agents to
+use Coinbase Agentic Wallet (AWAL) commands without embedding secrets.
 """
 
 import argparse
@@ -36,7 +35,7 @@ def _split_url(url: str) -> Tuple[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run Coinbase AWAL commands from the Singularity skill",
+        description="Run Coinbase AWAL commands from x402-layer skill",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

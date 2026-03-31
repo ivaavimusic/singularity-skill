@@ -39,8 +39,12 @@ USDC_NAME = "USD Coin"
 USDC_VERSION = "2"
 
 
-def _wants_help(argv: list[str]) -> bool:
-    return len(argv) >= 2 and argv[1] in {"-h", "--help"}
+def _print_usage() -> None:
+    print("Usage: python consume_product.py <product-slug-or-url> [--download]")
+    print("\nExamples:")
+    print("  python consume_product.py pussio")
+    print("  python consume_product.py https://studio.x402layer.cc/pay/pussio")
+    print("  python consume_product.py pussio --download")
 
 
 def load_credentials() -> Tuple[str, str]:
@@ -305,16 +309,12 @@ def consume_product(product_input: str, download_file: bool = False) -> dict:
 
 
 def main():
-    if _wants_help(sys.argv):
-        print(__doc__.strip())
-        return
+    if len(sys.argv) >= 2 and sys.argv[1] in {"-h", "--help"}:
+        _print_usage()
+        sys.exit(0)
 
     if len(sys.argv) < 2:
-        print("Usage: python consume_product.py <product-slug-or-url> [--download]")
-        print("\nExamples:")
-        print("  python consume_product.py pussio")
-        print("  python consume_product.py https://studio.x402layer.cc/pay/pussio")
-        print("  python consume_product.py pussio --download")
+        _print_usage()
         sys.exit(1)
     
     product_input = sys.argv[1]

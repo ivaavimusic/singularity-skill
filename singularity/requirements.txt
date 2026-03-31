@@ -1,4 +1,4 @@
-# Singularity Skill - Python Dependencies
+# x402 Layer - Python Dependencies
 # Install: pip install -r requirements.txt
 
 # EVM/Base payments - Required for EIP-712 signing

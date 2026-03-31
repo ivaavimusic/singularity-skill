@@ -16,10 +16,6 @@ import requests
 from solana_signing import create_solana_xpayment_from_accept, has_solana_credentials, load_solana_wallet_address
 
 
-def _wants_help(argv: list[str]) -> bool:
-    return len(argv) >= 2 and argv[1] in {"-h", "--help"}
-
-
 def _find_solana_accept(challenge: dict) -> dict:
     for option in challenge.get("accepts", []):
         if str(option.get("network", "")).lower() == "solana":
@@ -84,10 +80,6 @@ def pay_for_access(endpoint_url: str) -> dict:
 
 
 if __name__ == "__main__":
-    if _wants_help(sys.argv):
-        print(__doc__.strip())
-        raise SystemExit(0)
-
     if len(sys.argv) < 2:
         print("Usage: python pay_solana.py <endpoint_url>")
         sys.exit(1)
