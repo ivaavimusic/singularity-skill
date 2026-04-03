@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.9.1
+version: 1.10.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -17,7 +17,8 @@ description: |
   "submit on-chain reputation feedback", "rate ERC-8004 agent",
   "use World AgentKit", "unlock human-backed agent wallet discount",
   "check if an endpoint has an AgentKit benefit", "open support chat",
-  use "Coinbase Agentic Wallet (AWAL)", or use optional Singularity MCP
+  use "Coinbase Agentic Wallet (AWAL)", "OpenWallet", "OWS",
+  "openwallet.sh", or use optional Singularity MCP
   access with a dashboard PAT to manage x402 Singularity Layer operations
   on Base, Ethereum, Polygon, BSC, Monad, or Solana networks.
 homepage: https://studio.x402layer.cc/docs/agentic-access/singularity-skill
@@ -56,7 +57,7 @@ Use this routing first, then load the relevant reference doc.
 | User intent | Primary path | Reference |
 |---|---|---|
 | Integrate crypto payments into an app/platform | `create_endpoint.py`, `manage_webhook.py`, `verify_webhook_payment.py`, `consume_product.py`, `recharge_credits.py` | `references/payments-integration.md`, `references/webhooks-verification.md`, `references/agentic-endpoints.md` |
-| Pay/consume endpoint or product | `pay_base.py`, `pay_solana.py`, `consume_credits.py`, `consume_product.py` | `references/pay-per-request.md`, `references/credit-based.md`, `references/agentkit-benefits.md` |
+| Pay/consume endpoint or product | `pay_base.py`, `pay_solana.py`, `consume_credits.py`, `consume_product.py`, `ows_cli.py` | `references/pay-per-request.md`, `references/credit-based.md`, `references/agentkit-benefits.md`, `references/openwallet-ows.md` |
 | Discover/search marketplace | `discover_marketplace.py` | `references/marketplace.md`, `references/agentkit-benefits.md` |
 | Create/edit/list endpoint | `create_endpoint.py`, `manage_endpoint.py`, `list_on_marketplace.py`, `topup_endpoint.py` | `references/agentic-endpoints.md`, `references/marketplace.md`, `references/agentkit-benefits.md` |
 | Manage dashboard/platform control plane with PAT-backed access | `Singularity MCP` tools such as `list_my_endpoints`, `update_endpoint`, `list_my_products`, `update_product`, `set_webhook`, `remove_webhook`, `request_endpoint_creation_payment` | `references/mcp-control-plane.md`, `references/agentic-endpoints.md`, `references/marketplace.md` |
@@ -64,6 +65,7 @@ Use this routing first, then load the relevant reference doc.
 | Register/discover/manage/rate agents (ERC-8004/Solana-8004) | `register_agent.py`, `list_agents.py`, `list_my_endpoints.py`, `update_agent.py`, `submit_feedback.py` | `references/agent-registry-reputation.md` |
 | Human-backed agent wallet benefits (World AgentKit) | `pay_base.py`, `discover_marketplace.py` | `references/agentkit-benefits.md` |
 | Support and buyer/seller messaging | `support_auth.py`, `support_threads.py`, `xmtp_support.mjs` | `references/xmtp-support.md` |
+| Use OpenWallet / OWS as an optional wallet backend | `ows_cli.py` | `references/openwallet-ows.md`, `references/pay-per-request.md`, `references/payment-signing.md` |
 
 ---
 
@@ -89,7 +91,13 @@ Option B: Coinbase AWAL
 export X402_USE_AWAL=1
 ```
 
-Use private-key mode for ERC-8004 wallet-first registration. AWAL remains useful for x402 payment flows.
+Option C: OpenWallet / OWS
+```bash
+npm install -g @open-wallet-standard/core
+export OWS_WALLET="hackathon-wallet"
+```
+
+Use private-key mode for ERC-8004 wallet-first registration. AWAL remains useful for x402 payment flows. OWS is optional-first for pay/discover/sign-message flows through `ows_cli.py`.
 If your runtime supports Coinbase Agentic Wallet, install or enable it separately in that runtime before turning on `X402_USE_AWAL`.
 
 ### 3) Optional Dashboard / MCP Mode
@@ -109,6 +117,7 @@ Use MCP when the task is about:
 Keep the direct scripts for:
 - actual request payments and local signing
 - AWAL-driven pay/discover flows
+- OWS-driven pay/discover/sign-message flows
 - support and XMTP flows
 - wallet-first ERC-8004 / Solana-8004 registration and updates
 
@@ -134,6 +143,7 @@ Read-only note: marketplace browsing and listing inspection do not require any s
 | `support_threads.py` | Check support eligibility, open/list/show/close/reopen support threads |
 | `xmtp_support.mjs` | Send and read XMTP support messages for a support thread |
 | `awal_cli.py` | Run AWAL auth/pay/discover commands |
+| `ows_cli.py` | Run OpenWallet / OWS wallet, pay, discover, sign-message, and agent-key commands |
 
 ### Provider
 | Script | Purpose |
@@ -199,6 +209,9 @@ python {baseDir}/scripts/pay_base.py https://api.x402layer.cc/e/weather-data
 python {baseDir}/scripts/pay_base.py https://api.x402layer.cc/e/weather-data --agentkit auto
 python {baseDir}/scripts/pay_solana.py https://api.x402layer.cc/e/weather-data
 python {baseDir}/scripts/consume_credits.py https://api.x402layer.cc/e/weather-data
+
+# Optional OWS backend
+python {baseDir}/scripts/ows_cli.py pay-url https://api.x402layer.cc/e/weather-data --wallet hackathon-wallet
 ```
 
 ### C) Discover/Search Marketplace
@@ -206,6 +219,9 @@ python {baseDir}/scripts/consume_credits.py https://api.x402layer.cc/e/weather-d
 python {baseDir}/scripts/discover_marketplace.py
 python {baseDir}/scripts/discover_marketplace.py search weather
 python {baseDir}/scripts/discover_marketplace.py details weather-api
+
+# Optional OWS discovery path
+python {baseDir}/scripts/ows_cli.py discover weather
 ```
 
 ### D) Create and Manage Endpoint
@@ -242,7 +258,19 @@ python {baseDir}/scripts/verify_webhook_payment.py \
   --require-receipt
 ```
 
-### G) Agent Registration + Reputation
+### G) OpenWallet / OWS
+```bash
+# List local OWS wallets
+python {baseDir}/scripts/ows_cli.py wallet-list
+
+# Sign a message without exporting a raw private key
+python {baseDir}/scripts/ows_cli.py sign-message --chain ethereum --wallet hackathon-wallet --message "hello"
+
+# Create an OWS agent API key
+python {baseDir}/scripts/ows_cli.py key-create --name codex-agent --wallet hackathon-wallet
+```
+
+### H) Agent Registration + Reputation
 ```bash
 python {baseDir}/scripts/list_my_endpoints.py
 
@@ -251,7 +279,7 @@ python {baseDir}/scripts/register_agent.py \
   "Autonomous service agent" \
   --network baseSepolia \
   --image https://example.com/agent.png \
-  --version 1.8.2 \
+  --version 1.10.0 \
   --tag finance \
   --tag automation \
   --endpoint-id <ENDPOINT_UUID> \
@@ -307,6 +335,8 @@ Load only what is needed for the user task:
   how support chat works in Studio, what needs human setup, and how agents should coordinate with users.
 - `references/mcp-control-plane.md`:
   when to use Singularity MCP, what PAT scopes are needed, and which owner-scoped actions should prefer MCP over direct scripts.
+- `references/openwallet-ows.md`:
+  optional OpenWallet / OWS wallet backend guidance, install commands, and current scope.
 - `references/payment-signing.md`:
   exact signing domains/types/header payload details.
 
@@ -327,6 +357,8 @@ No single task needs every variable below. Use least privilege and set only what
 | `X402_PREFER_NETWORK` | network selection | `base`, `solana` |
 | `X402_AGENTKIT_MODE` | optional AgentKit behavior | `off`, `auto`, `required` |
 | `X402_API_BASE` | API override | default `https://api.x402layer.cc` |
+| `OWS_WALLET` | OWS wrapper flows | wallet name or ID for `ows_cli.py` |
+| `OWS_BIN` | OWS wrapper flows | optional explicit path to the `ows` executable |
 
 ### Optional MCP Control Plane
 
@@ -391,3 +423,5 @@ No single task needs every variable below. Use least privilege and set only what
 ## Known Issue
 
 Solana exact-payment flows must use the `feePayer` returned by the challenge and keep the transaction compute-unit limit within facilitator requirements. `pay_solana.py` and `solana_signing.py` handle this for the current PayAI-backed flow; prefer Base when you need the simplest production path.
+
+OpenWallet / OWS support is optional-first in this release: use it for pay/discover/sign-message flows, but keep private-key mode for the deepest wallet-first registration and custom transaction paths.
