@@ -1,10 +1,11 @@
 ---
 name: singularity
-version: 1.10.0
+version: 1.10.6
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
   manage credits, webhooks, marketplace listings, and handle wallet-first ERC-8004 registration, discovery, management, and reputation on Base, Ethereum, Polygon, BSC, Monad, and Solana.
+  Only ask for or use privileged credentials after choosing a runbook that actually needs signing or owner-scoped writes.
   Use this skill when the user asks to "create x402 endpoint",
   "deploy monetized API", "pay for API with USDC", "check x402 credits",
   "consume API credits", "list endpoint on marketplace", "buy API credits",
@@ -21,7 +22,7 @@ description: |
   "openwallet.sh", or use optional Singularity MCP
   access with a dashboard PAT to manage x402 Singularity Layer operations
   on Base, Ethereum, Polygon, BSC, Monad, or Solana networks.
-homepage: https://studio.x402layer.cc/docs/agentic-access/singularity-skill
+homepage: https://docs.x402layer.cc/agentic-access/singularity-skill
 allowed-tools:
   - Read
   - Write
@@ -47,6 +48,12 @@ If the agent specifically needs the OpenClaw-native channel, use `x402-layer`.
 Networks: Base, Ethereum, Polygon, BSC, Monad, Solana  
 Currency: USDC  
 Protocol: HTTP 402 Payment Required
+
+> **Security-first usage:** No secret environment variable is universally required for installation. Set only the minimum variables needed for the exact runbook you are using. Prefer AWAL, OWS, API keys, or ephemeral wallets over long-lived mainnet private keys whenever possible.
+>
+> **Execution scope:** For discovery, docs, and listing inspection, stay on the no-secret path first. Only use private keys, Solana signer keys, endpoint API keys, PATs, or support tokens when the user explicitly wants signing, webhook management, support auth, or owner-scoped control-plane actions.
+>
+> **Expected network/binary surface:** `api.x402layer.cc`, `studio.x402layer.cc`, `mcp.x402layer.cc`, and local `awal` / `ows` binaries when those wallet modes are explicitly enabled.
 
 ---
 
@@ -97,7 +104,8 @@ npm install -g @open-wallet-standard/core
 export OWS_WALLET="hackathon-wallet"
 ```
 
-Use private-key mode for ERC-8004 wallet-first registration. AWAL remains useful for x402 payment flows. OWS is optional-first for pay/discover/sign-message flows through `ows_cli.py`.
+Use private-key mode for deep ERC-8004 registration and any on-chain update path that still needs direct transaction signing. AWAL remains useful for x402 payment flows. OWS is optional-first for pay/discover/sign-message flows plus wallet-auth list/support flows through `ows_cli.py` and the shared wallet helpers.
+Do not export every credential shown above at once. Pick one wallet path and only the extra control-plane credentials the selected runbook needs.
 If your runtime supports Coinbase Agentic Wallet, install or enable it separately in that runtime before turning on `X402_USE_AWAL`.
 
 ### 3) Optional Dashboard / MCP Mode
@@ -124,6 +132,7 @@ Keep the direct scripts for:
 Security note: scripts read only explicit process environment variables. `.env` files are not auto-loaded.
 Install note: no secret environment variable is globally required for installation. Set only the subset needed for the runbook you are using.
 Read-only note: marketplace browsing and listing inspection do not require any signing key.
+Risk note: this skill can sign messages, submit transactions, and call x402/studio APIs. Prefer AWAL, OWS, PATs, endpoint API keys, or throwaway wallets over long-lived private keys when possible.
 
 ---
 
@@ -248,6 +257,14 @@ python {baseDir}/scripts/manage_webhook.py info my-api
 python {baseDir}/scripts/manage_webhook.py remove my-api
 ```
 
+Studio seller webhooks are HMAC-signed. Expect:
+- `X-X402-Signature`
+- `X-X402-Timestamp`
+- `X-X402-Event`
+- `X-X402-Event-Id`
+
+Verify `HMAC-SHA256(timestamp + "." + rawBody)` with the webhook `signing_secret`. Keep legacy raw-secret header checks only as backward-compatibility fallback for older receivers.
+
 Webhook verification helper:
 ```bash
 python {baseDir}/scripts/verify_webhook_payment.py \
@@ -346,6 +363,16 @@ Load only what is needed for the user task:
 
 No single task needs every variable below. Use least privilege and set only what the current script requires.
 
+### Credential Path Rule
+
+Choose the smallest path that fits the task:
+
+1. **No-secret discovery:** marketplace browsing and public listing inspection
+2. **Endpoint API key:** endpoint, listing, and webhook management
+3. **PAT / MCP:** owner-scoped dashboard inventory and control-plane operations
+4. **AWAL / OWS:** delegated wallet auth or pay/discover/sign-message flows
+5. **Direct private keys:** deep wallet-first registration, on-chain updates, or flows that still require local transaction signing
+
 ### Common
 
 | Variable | Used by | Notes |
@@ -412,7 +439,7 @@ No single task needs every variable below. Use least privilege and set only what
 
 ## Resources
 
-- Docs: https://studio.x402layer.cc/docs/agentic-access/openclaw-skill
+- Docs: https://docs.x402layer.cc/agentic-access/singularity-skill
 - MCP docs: https://studio.x402layer.cc/docs/agentic-access/mcp-server
 - SDK docs: https://studio.x402layer.cc/docs/developer/sdk-receipts
 - GitHub docs repo: https://github.com/ivaavimusic/SGL_DOCS_2025
@@ -424,4 +451,4 @@ No single task needs every variable below. Use least privilege and set only what
 
 Solana exact-payment flows must use the `feePayer` returned by the challenge and keep the transaction compute-unit limit within facilitator requirements. `pay_solana.py` and `solana_signing.py` handle this for the current PayAI-backed flow; prefer Base when you need the simplest production path.
 
-OpenWallet / OWS support is optional-first in this release: use it for pay/discover/sign-message flows, but keep private-key mode for the deepest wallet-first registration and custom transaction paths.
+OpenWallet / OWS support is optional-first in this release: use it for pay/discover/sign-message flows and wallet-auth list/support flows, but keep private-key mode for the deepest wallet-first registration and custom transaction paths.
