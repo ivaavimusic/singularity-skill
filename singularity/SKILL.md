@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.10.6
+version: 1.11.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -67,7 +67,7 @@ Use this routing first, then load the relevant reference doc.
 | Pay/consume endpoint or product | `pay_base.py`, `pay_solana.py`, `consume_credits.py`, `consume_product.py`, `ows_cli.py` | `references/pay-per-request.md`, `references/credit-based.md`, `references/agentkit-benefits.md`, `references/openwallet-ows.md` |
 | Discover/search marketplace | `discover_marketplace.py` | `references/marketplace.md`, `references/agentkit-benefits.md` |
 | Create/edit/list endpoint | `create_endpoint.py`, `manage_endpoint.py`, `list_on_marketplace.py`, `topup_endpoint.py` | `references/agentic-endpoints.md`, `references/marketplace.md`, `references/agentkit-benefits.md` |
-| Manage dashboard/platform control plane with PAT-backed access | `Singularity MCP` tools such as `list_my_endpoints`, `update_endpoint`, `list_my_products`, `update_product`, `set_webhook`, `remove_webhook`, `request_endpoint_creation_payment` | `references/mcp-control-plane.md`, `references/agentic-endpoints.md`, `references/marketplace.md` |
+| Manage dashboard/platform control plane with PAT-backed access | `Singularity MCP` tools such as `list_my_endpoints`, `list_my_campaigns`, `create_campaign`, `update_campaign`, `update_endpoint`, `list_my_products`, `update_product`, `set_webhook`, `remove_webhook`, `request_endpoint_creation_payment` | `references/mcp-control-plane.md`, `references/agentic-endpoints.md`, `references/marketplace.md` |
 | Configure/verify webhooks | `manage_webhook.py`, `verify_webhook_payment.py` | `references/webhooks-verification.md` |
 | Register/discover/manage/rate agents (ERC-8004/Solana-8004) | `register_agent.py`, `list_agents.py`, `list_my_endpoints.py`, `update_agent.py`, `submit_feedback.py` | `references/agent-registry-reputation.md` |
 | Human-backed agent wallet benefits (World AgentKit) | `pay_base.py`, `discover_marketplace.py` | `references/agentkit-benefits.md` |
@@ -118,6 +118,7 @@ export SINGULARITY_PAT="sgl_pat_..."
 
 Use MCP when the task is about:
 - listing all endpoints or products owned by the dashboard user
+- listing or managing fundraiser campaigns owned by the dashboard user
 - updating endpoint or product settings
 - setting or removing webhooks
 - requesting endpoint creation or top-up payment challenges in an owner-scoped way
