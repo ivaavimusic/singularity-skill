@@ -2,7 +2,7 @@
 
 Portable full-platform agent skill for x402 Studio and Singularity Layer.
 
-Current release: `v1.11.0`
+Current release: `v1.11.1`
 
 ## Install
 
