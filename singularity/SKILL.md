@@ -45,6 +45,8 @@ This portable skill covers the full platform lifecycle:
 This is the general skills.sh-compatible package.
 If the agent specifically needs the OpenClaw-native channel, use `x402-layer`.
 
+For the **Singularity Cloud Network** (compute, not marketplace) — rent GPU/VPS instances (SGL Machines), run confidential OpenAI-compatible inference (SGL Grid), or operate a node to earn — use the **`x402-compute`** skill: `npx skills add https://github.com/ivaavimusic/singularity-skill --skill x402-compute` (or `curl -fsSL https://api.x402layer.cc/skill/x402-compute/install | bash`).
+
 Networks: Base, Ethereum, Polygon, BSC, Monad, Solana  
 Currency: USDC  
 Protocol: HTTP 402 Payment Required
