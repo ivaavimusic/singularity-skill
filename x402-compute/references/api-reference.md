@@ -22,11 +22,11 @@ All **instance management** endpoints require authentication. Provision/extend a
 - **Signature Auth (wallet signing)**  
   Required headers:
   - `X-Auth-Address`: wallet address
-  - `X-Auth-Chain`: `base` or `solana`
+  - `X-Auth-Chain`: `base`, `megaeth`, `robinhood`, or `solana`
   - `X-Auth-Signature`: signature over the request
   - `X-Auth-Timestamp`: epoch millis
   - `X-Auth-Nonce`: unique nonce
-  - `X-Auth-Sig-Encoding`: `hex` (Base) or `base64` (Solana)
+  - `X-Auth-Sig-Encoding`: `hex` (EVM: base/megaeth/robinhood) or `base64` (Solana)
 
 - **API Key Auth (agent access)**
   Required header:
@@ -60,7 +60,7 @@ List available compute plans with pricing.
 }
 ```
 
-Prices include the platform markup and are in USD. Plans now include `our_daily` pricing (hourly × 24). The x402 payment amount is calculated from the hourly rate times `prepaid_hours`, converted to USDC atomic units (6 decimals).
+Prices include the platform markup and are in USD. Plans now include `our_daily` pricing (hourly × 24). The x402 payment amount is calculated from the hourly rate times `prepaid_hours`, converted to stablecoin atomic units (6 decimals — USDC on Base/Solana, USDm on MegaETH, USDG on Robinhood Chain).
 
 ---
 
@@ -138,7 +138,7 @@ Top up credits via x402 payment. Returns `402 Payment Required` if no `X-Payment
 ```
 
 - `amount`: USD to deposit (minimum $1)
-- `network`: `base`, `solana`, or `megaeth`
+- `network`: `base`, `solana`, `megaeth`, or `robinhood` (base/solana = USDC, megaeth = USDm, robinhood = USDG)
 
 **Headers:**
 - Auth headers (see Authentication above)
@@ -182,6 +182,10 @@ Provision a new compute instance. Returns `402 Payment Required` with x402 and, 
 - For DigitalOcean plans, `ssh_public_key` or existing `ssh_key_id(s)` is required. Password fallback is Vultr-only.
 - DigitalOcean plan IDs are prefixed, for example `do:s-1vcpu-1gb`.
 - Set `use_credits: true` to deduct from pre-loaded credit balance instead of requiring x402/MPP payment. Auth is required for the credit path. If balance is insufficient, returns `402` with the shortfall.
+- **AI Machine:** add a **nested** object to deploy a GPU that comes up running an LLM. The two are mutually exclusive:
+  - `"ai_machine": { "model_id": "<id>", "mode": "private" }` — a dedicated **OpenAI-compatible** endpoint (`mode` must be `"private"`). The success order's `metadata.ai = { model_id, api_key, port: 8080, endpoint }`; the box exposes `/v1/chat/completions` and `/v1/models` at `<endpoint>/v1`, authenticated with `Authorization: Bearer <api_key>`. For VM providers `endpoint` derives from the instance IP + port (`http://<ip>:8080/v1`) once the IP lands (read via `GET /compute/instances/:id`). **Requires an x402 wallet payment — `use_credits: true` is rejected for `ai_machine`.**
+  - `"deploy_node": { "model_id": "<id>" }` — joins the grid to serve inference and earn USDC + SGL (requires ≥ 50,000 $SGL staked to the paying wallet; x402 Solana payment).
+  - `os_id` is the provider GPU image id from the catalog (varies by provider). AI Machines are the **Standard** tier (not confidential/TEE). Full detail in `references/ai-machines.md`.
 
 **Headers:**
 - Auth headers (see Authentication above)
@@ -418,7 +422,7 @@ Revoke an API key (signature auth required).
 
 ## SGL Grid — Inference (base: `https://grid.x402compute.cc`)
 
-Decentralized, confidential, **OpenAI-compatible** inference. Auth with `X-API-Key: x402c_…` (billed to prepaid credits — same key/credits as Machines) or per-request x402 via `X-Payment`. Pay-per-token in USDC.
+Decentralized, confidential, **OpenAI-compatible** inference. Auth with your API key as **either** `Authorization: Bearer x402c_…` (standard OpenAI style — works with the OpenAI SDK, Cursor, opencode, LibreChat, etc.) **or** `X-API-Key: x402c_…` (billed to prepaid credits — same key/credits as Machines), or per-request x402 via `X-Payment`. Pay-per-token in USDC.
 
 ### GET /v1/models
 
@@ -447,4 +451,34 @@ Live grid capacity — active node count, TEE types, served models, and an `at_c
 
 ```bash
 curl https://grid.x402compute.cc/grid/capacity
+```
+
+### GET /v1/providers
+
+Compare the nodes serving a model, with each node's effective per-token price (custom if the operator set one, else the suggested reference), sorted cheapest-first. No auth. Optional `cluster` filter. Pass a chosen `node` to `/v1/chat/completions` (or the `node=` arg in the SDKs) to pin that provider; omit it to let the grid route.
+
+```bash
+curl "https://grid.x402compute.cc/v1/providers?model=llama-3.2-3b"
+# {"model":"llama-3.2-3b","count":2,"providers":[
+#   {"node_id":"…","input_per_m":0.004,"output_per_m":0.004,"blended_per_1k":4e-06,"is_custom":true,"online":true}, …]}
+```
+
+**Price cap (`max_price`):** instead of picking a node, add `"max_price": <USD per 1M tokens, blended>` to your `/v1/chat/completions` (or `/v1/reserve`) request — the grid routes only to nodes at/under that rate and never bills above it. Returns `price_cap_unmet` if none qualify. Available as `max_price` (Python) / `maxPrice` (TS) in the SDKs.
+
+### GET /grid/nodes/:id/prices
+
+Public. A node's per-model prices: the `reference` (suggested) rate, the allowed `floor`/`ceiling` band, the operator's `custom` price (or `null`), and the `effective` price billed.
+
+```bash
+curl https://grid.x402compute.cc/grid/nodes/<NODE_ID>/prices
+```
+
+### POST /grid/nodes/:id/prices
+
+Operator-only — set or reset a model's price. Auth with the node token (`X-Node-Auth`, used by `sgl price …`) **or** an owner wallet signature. Band-enforced (suggested × 0.5 … × 5), the model must be one the node advertises, and there's a short cooldown between changes. Body: `{ "model": "...", "input_per_m": 0.004, "output_per_m": 0.004 }` (or `{ "model": "...", "reset": true }`).
+
+```bash
+curl -X POST https://grid.x402compute.cc/grid/nodes/<NODE_ID>/prices \
+  -H "X-Node-Auth: <node-token>" -H "Content-Type: application/json" \
+  -d '{"model":"llama-3.2-3b","input_per_m":0.004,"output_per_m":0.004}'
 ```

@@ -1,20 +1,27 @@
 ---
 name: x402-compute
-version: 1.6.0
+version: 1.12.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
+  "deploy AI machine", "one-click GPU running an LLM", "deploy a private LLM endpoint",
+  "OpenRouter-ready endpoint", "agent deploy GPU", "spin up my own OpenAI-compatible endpoint",
   "extend compute instance", "resize compute instance", "destroy server instance", "check instance status",
   "list my instances", "top up compute credits", "check credit balance",
   "run inference on the grid", "decentralized inference", "OpenAI-compatible API",
   "confidential / TEE inference", "list grid models", "check grid capacity",
   "run a node", "provide compute", "become a grid node", "node operator", "join the grid",
   "stake to run a node", "serve a model on the grid", "earn from compute",
-  or manage Singularity Cloud Network compute. Three jobs: SGL Machines
-  (GPU/VPS provisioning across Vultr & DigitalOcean), SGL Grid (decentralized,
-  confidential, OpenAI-compatible inference — consume it), and Provide Compute
-  (run a TEE node on the grid to serve inference and earn USDC + SGL). Pay with
-  USDC on Base or Solana, USDm on MegaETH via x402, optional MPP/Mppx, or
+  "deploy an always-on AI agent", "deploy a hosted OpenClaw agent", "spin up a ClawPod",
+  "agent pod", "hosted agent with its own wallet", "free agent trial",
+  or manage Singularity Cloud Network compute. Five jobs: SGL Machines
+  (GPU/VPS provisioning across Vultr & DigitalOcean), AI Machines (one-click GPU
+  running an LLM — deploy a private OpenAI-compatible endpoint, or join the grid & earn),
+  SGL Grid (decentralized, confidential, OpenAI-compatible inference — consume it),
+  Provide Compute (run a TEE node on the grid to serve inference and earn USDC + SGL), and
+  Agent Pods (deploy an always-on hosted OpenClaw agent with its own crypto wallet, memory,
+  and preinstalled x402 skills — managed or BYOK, tiers, free 24h trial). Pay with
+  USDC on Base or Solana, USDm on MegaETH, USDG on Robinhood Chain via x402, optional MPP/Mppx, or
   pre-loaded USD credits. Includes optional OWS-backed auth and management flows.
 homepage: https://docs.x402layer.cc/agentic-access/x402-compute
 metadata:
@@ -29,7 +36,7 @@ metadata:
         - python3
       env:
         - name: PRIVATE_KEY
-          description: EVM private key for Base/MegaETH payment signing (use a dedicated low-balance wallet)
+          description: EVM private key for Base/MegaETH/Robinhood payment signing (use a dedicated low-balance wallet)
           sensitive: true
           optional: true
         - name: WALLET_ADDRESS
@@ -47,7 +54,7 @@ metadata:
           sensitive: true
           optional: true
         - name: COMPUTE_AUTH_CHAIN
-          description: Auth chain override — base, megaeth, or solana
+          description: Auth chain override — base, megaeth, robinhood, or solana
           optional: true
         - name: OWS_BIN
           description: Explicit path to a locally installed OWS binary (avoids runtime npx downloads)
@@ -63,17 +70,19 @@ allowed-tools:
 
 # Singularity Cloud Network — Compute & Grid
 
-Two products, one credit balance, one set of wallet/API-key auth:
+Products share one credit balance and one set of wallet/API-key auth:
 
 - **SGL Machines** — provision, manage, resize, and extend GPU/VPS instances on Vultr or DigitalOcean. **API base:** `https://compute.x402layer.cc`
+- **AI Machines** — one-click deploy of a **GPU already running an LLM**, mode chosen at deploy: `private` (your own **OpenAI-compatible** endpoint — returns URL + API key) or `grid` (serve as a node & earn USDC + SGL, needs 50k SGL staked). Same x402 lifecycle as Machines; add `model_id` + `mode` to provision. **Standard tier (not confidential).** See [AI Machines](#ai-machines--one-click-llm-gpu) below and `references/ai-machines.md`.
 - **SGL Grid** — decentralized, confidential (TEE), **OpenAI-compatible** inference across attested nodes; token streaming + end-to-end encryption. **API base:** `https://grid.x402compute.cc` (see [SGL Grid — Inference](#sgl-grid--inference) below)
-- **Provide Compute (run a node)** — turn a TEE-capable machine into a grid node: stake $SGL, register, attest, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
+- **Provide Compute (run a node)** — turn a TEE-capable machine into a grid node: stake $SGL, register, attest, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. Operators can set a **custom per-token price** within a band (`sgl price set`, suggested × 0.5–× 5); callers compare nodes via `GET /v1/providers`. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
+- **Agent Pods** — deploy an **always-on hosted AI agent** (OpenClaw "ClawPod") on a dedicated CPU machine: it chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
 - **SGL Processors** — serverless TEE functions. *Coming soon.*
 
 Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and prepaid credit balance work across Machines and Grid.
 
-**x402 Networks:** Base (EVM) • Solana • MegaETH
-**x402 Currency:** USDC (Base/Solana) • USDm (MegaETH)
+**x402 Networks:** Base (EVM) • Solana • MegaETH • Robinhood Chain (EVM)
+**x402 Currency:** USDC (Base/Solana) • USDm (MegaETH) • USDG (Robinhood Chain)
 **MPP Methods:** Tempo • Stripe/card when enabled by the service
 **Credits:** Pre-load USD via x402 topup, then provision/extend (`use_credits: true`) or call the Grid with `X-API-Key`
 **Protocol:** HTTP 402 Payment Required (`X-Payment` for x402, `Authorization: Payment` for MPP)
@@ -95,12 +104,12 @@ pip install -r {baseDir}/requirements.txt
 
 ### 2. Choose Wallet Mode
 
-#### Option A: Direct signing keys (Base, MegaETH, or Solana)
+#### Option A: Direct signing keys (Base, MegaETH, Robinhood, or Solana)
 
 > **Use a dedicated low-balance wallet.** Never use your primary custody wallet.
 
 ```bash
-# Base (EVM) — same keys work for MegaETH
+# Base (EVM) — same keys work for MegaETH and Robinhood Chain
 export PRIVATE_KEY=<your-evm-private-key>
 export WALLET_ADDRESS=<your-evm-wallet-address>
 
@@ -108,6 +117,11 @@ export WALLET_ADDRESS=<your-evm-wallet-address>
 export PRIVATE_KEY=<your-evm-private-key>
 export WALLET_ADDRESS=<your-evm-wallet-address>
 export COMPUTE_AUTH_CHAIN="megaeth"
+
+# Robinhood Chain (uses same EVM keys as Base; pays with USDG)
+export PRIVATE_KEY=<your-evm-private-key>
+export WALLET_ADDRESS=<your-evm-wallet-address>
+export COMPUTE_AUTH_CHAIN="robinhood"
 
 # Solana
 export SOLANA_SECRET_KEY=<your-solana-secret-key>
@@ -149,7 +163,7 @@ Resize is a management action, not a second payment flow. The API preserves rema
 |--------|---------|
 | `browse_plans.py` | List available GPU/VPS plans with pricing |
 | `browse_regions.py` | List deployment regions |
-| `provision.py` | Provision a new instance (x402 payment, `--months` or `--days`) |
+| `provision.py` | Provision a new instance (x402 payment, `--months` or `--days`). Add `--model-id` + `--mode private\|grid` to deploy an **AI Machine** (GPU running an LLM). |
 | `create_api_key.py` | Create an API key for agent access (optional) |
 | `list_instances.py` | List your active instances |
 | `instance_details.py` | Get details for a specific instance |
@@ -158,7 +172,33 @@ Resize is a management action, not a second payment flow. The API preserves rema
 | `resize_instance.py` | Resize an instance in place (compute auth only) |
 | `destroy_instance.py` | Destroy an instance |
 | `ows_cli.py` | Run OpenWallet / OWS wallet, sign-message, and key commands |
+| `agent_pod.py` | Deploy an **Agent Pod** (`POST /pods`), create an `sk-sglpod-int-*` integration key, and call the pod's **OpenAI adapter** (`catalog`/`list`/`get`/`deploy`/`create-key`/`chat`) |
 | `solana_signing.py` | Internal helper for Solana x402 payment signing |
+
+---
+
+## Intent Router
+
+Map the user's request to the script + reference to load (progressive disclosure — only open the
+reference you need).
+
+| User intent | Script | Reference |
+|-------------|--------|-----------|
+| "provision a GPU/VPS", "spin up a server", "extend/resize/destroy instance" | `provision.py` / `extend_instance.py` / `resize_instance.py` / `destroy_instance.py` | `references/api-reference.md` |
+| "deploy a private LLM endpoint", "one-click GPU running an LLM", "OpenRouter-ready endpoint" | `provision.py --model-id … --mode private` | `references/ai-machines.md` |
+| "join the grid & earn", "run a node", "provide compute" | `sgl` CLI (see below) | `references/node-operator.md` |
+| "run inference on the grid", "confidential/TEE OpenAI-compatible inference" | curl / any OpenAI SDK → `grid.x402compute.cc` | `references/api-reference.md` |
+| **"deploy an agent pod"**, "hosted OpenClaw/ClawPod", "always-on AI agent with its own wallet", "free 24h agent trial" | **`agent_pod.py deploy`** (or `catalog`/`list`/`get`) | **`references/agent-pods.md`** |
+| **"call my pod via the OpenAI API"**, "give my pod an OpenAI-compatible endpoint", "get an API key for my agent pod" | **`agent_pod.py create-key` then `agent_pod.py chat`** | **`references/agent-pods.md`** |
+
+Agent Pod quick path:
+```bash
+python {baseDir}/scripts/agent_pod.py catalog                              # pick tier/plan/model
+python {baseDir}/scripts/agent_pod.py deploy --ai-mode managed --tier pro \
+    --plan <plan_id> --prepaid-hours 720 --telegram <bot_token> --use-credits
+python {baseDir}/scripts/agent_pod.py create-key <pod_id> --name my-integration   # → sk-sglpod-int-…
+python {baseDir}/scripts/agent_pod.py chat <pod_id> "What's on my calendar?" --key sk-sglpod-int-…
+```
 
 ---
 
@@ -208,6 +248,9 @@ python {baseDir}/scripts/provision.py vc2-1c-1gb ewr --months 1 --label "my-sol-
 # Provision on MegaETH (pays with USDm)
 python {baseDir}/scripts/provision.py vc2-1c-1gb ewr --months 1 --label "my-mega-vps" --network megaeth --ssh-key-file ~/.ssh/x402_compute.pub
 
+# Provision on Robinhood Chain (pays with USDG — same EVM keys as Base)
+python {baseDir}/scripts/provision.py vc2-1c-1gb ewr --months 1 --label "my-usdg-vps" --network robinhood --ssh-key-file ~/.ssh/x402_compute.pub
+
 # Provision via MPP / mppx (Tempo by default; Stripe/card if your mppx config supports it)
 npx mppx https://compute.x402layer.cc/compute/provision \
   -X POST \
@@ -247,6 +290,9 @@ python {baseDir}/scripts/extend_instance.py <instance_id> --hours 720 --network 
 
 # Extend on MegaETH (pays with USDm)
 python {baseDir}/scripts/extend_instance.py <instance_id> --hours 720 --network megaeth
+
+# Extend on Robinhood Chain (pays with USDG)
+python {baseDir}/scripts/extend_instance.py <instance_id> --hours 720 --network robinhood
 
 # Extend via MPP. MPP extension requires compute auth; use the management API key
 # returned from MPP provisioning or normal wallet signature auth.
@@ -338,11 +384,14 @@ Credits are scoped per wallet. If the cloud provider rejects the instance after 
 2. Script signs payment locally:
    - Base: USDC `TransferWithAuthorization` (EIP-712)
    - MegaETH: USDm ERC-2612 `permit` (EIP-712) — gasless for the user, facilitator settles on-chain
+   - Robinhood Chain: USDG `TransferWithAuthorization` (EIP-3009, EIP-712) — gasless for the user, facilitator settles on-chain in a single tx (domain `name="Global Dollar"`, `version="1"`, chainId `4663`)
    - Solana: signed SPL transfer transaction payload
 3. Script resends request with `X-Payment` header containing signed payload
 4. Server verifies payment, settles on-chain, provisions/extends instance
 
 MegaETH uses an embedded facilitator (no external CDP dependency). The user signs an off-chain ERC-2612 permit, and the facilitator calls `permit()` + `transferFrom()` on MegaETH (~10ms blocks, near-zero gas).
+
+Robinhood Chain also uses an embedded facilitator (no third party). The user signs an off-chain EIP-3009 `TransferWithAuthorization` for USDG (`0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`, 6 decimals), and the facilitator submits `transferWithAuthorization()` on Robinhood Chain (chainId 4663) in a single transaction — the contract self-verifies the signature, nonce, and balance on-chain.
 
 For Solana, transient facilitator failures can happen. Retry once or twice if you get a temporary 5xx verify error.
 
@@ -361,6 +410,51 @@ Notes:
 - `POST /compute/instances/:id/resize` uses compute auth only. It preserves remaining prepaid value by changing expiry instead of charging again.
 - x402 remains fully supported through the Python scripts and `X-Payment` header flow.
 - MPP methods are service-configured. Tempo is used by default by `mppx`; Stripe/card requires a Stripe-capable MPP client/config.
+
+---
+
+## AI Machines — One-Click LLM GPU
+
+One-click deploy of a **GPU that comes up already running an LLM**. Same x402 lifecycle as any
+Machine (provision / extend / resize / destroy) — you just add `model_id` + `mode` to provision.
+Two modes, chosen at deploy:
+
+- **`private`** — your own **OpenAI-compatible** endpoint. The box runs `llama-server` exposing
+  `POST /v1/chat/completions` and `GET /v1/models`; the provision response returns the **endpoint URL
+  + API key**. Works with any OpenAI-compatible client/agent/router → **OpenRouter-ready**. (Listing it
+  *as an OpenRouter provider* is a separate OpenRouter approval — roadmap only.)
+- **`grid`** — serve as a grid node and **earn USDC + SGL** (requires **≥ 50,000 $SGL staked**).
+
+**Tier:** Standard (**not** confidential/TEE — for confidential inference use the Grid below or a TEE
+node). **Managed:** kept alive, auto-updates (allowlist-gated), SSH available. An **agent with a
+funded wallet can deploy + extend + destroy entirely via x402.**
+
+```bash
+# Deploy a PRIVATE OpenAI-compatible LLM endpoint (returns endpoint + API key)
+python {baseDir}/scripts/provision.py vcg-a100-1c-2g-6gb lax --days 1 --label "my-llm" \
+    --model-id llama-3.2-3b --mode private
+
+# Deploy a GRID node (join the grid & earn; wallet needs 50k SGL staked)
+python {baseDir}/scripts/provision.py vcg-a100-1c-2g-6gb lax --months 1 --label "grid-node" \
+    --model-id llama-3.2-3b --mode grid
+
+# Use a private endpoint (OpenAI-compatible)
+curl -X POST <ENDPOINT>/v1/chat/completions \
+  -H "Content-Type: application/json" -H "Authorization: Bearer <RETURNED_API_KEY>" \
+  -d '{"model":"llama-3.2-3b","messages":[{"role":"user","content":"Hello"}]}'
+
+# Extend runtime before it expires (most-used lifecycle action)
+python {baseDir}/scripts/extend_instance.py <instance_id> --hours 720
+
+# Destroy when done
+python {baseDir}/scripts/destroy_instance.py <instance_id>
+```
+
+Control API: `POST /compute/provision` (add `model_id`+`mode`; base fields `plan`,`region`,`os_id`),
+`GET /compute/instances`, `GET /compute/instances/:id`, `POST /compute/instances/:id/extend`,
+`POST /compute/instances/:id/resize`, `POST /compute/instances/:id/password`,
+`DELETE /compute/instances/:id`, `POST /compute/credits/topup`. Full detail + the end-to-end agent
+deploy example → **`references/ai-machines.md`**.
 
 ---
 
@@ -445,6 +539,155 @@ updates. Docs: `https://docs.x402layer.cc/cloud/provide/node-setup`.
 
 ---
 
+## Agent Pods — always-on hosted agents
+
+Deploy a persistent AI agent ("ClawPod", built on OpenClaw) on a dedicated CPU machine. It stays online 24/7, chats on **Telegram & Discord** (Slack / WhatsApp / Signal are coming soon) **and** from the dashboard, has its own **crypto wallet** (Coinbase CDP — EVM + Solana, keys in a TEE) and **persistent memory**, and ships with the `x402-compute` + `x402-layer` skills preinstalled — wired to your account with capped, revocable credentials — so it can buy confidential compute and pay x402 endpoints itself.
+
+**API base:** `https://compute.x402layer.cc`
+**Auth:** pod endpoints **always require compute auth** (`X-API-Key`, a signed compute session, or `X-Auth-*` wallet signature) — even when paying with x402, because a pod is owned by your wallet. (This differs from `POST /compute/provision`, which accepts anonymous x402.)
+**Pay:** platform **credits** (`use_credits: true`) or **x402** (omit `use_credits` → the deploy answers `402 Payment Required`; settle with the `X-Payment` header like any provision, and add `"network"` for a non-Base chain).
+**Only `openclaw` is deployable today** (`agent_id: "openclaw"`, display name "ClawPod"); HermPod (`hermes`) appears in the catalog marked "coming soon" and is rejected by deploy.
+
+### Catalog (public, no auth)
+```bash
+# Agents, managed tiers (models per tier), channels, memory backends, pricing
+curl -s https://compute.x402layer.cc/pods/catalog
+```
+
+### Deploy a pod — `POST /pods`
+Two AI modes:
+- **`managed`** — we run the LLM and meter it from your credits. Pick a `tier`: `starter` (text chat), `pro` (adds vision + computer-use), `max` (top reasoning + vision). Each tier bundles a machine RAM floor + a curated model menu the agent can switch among at runtime (`/model`). Managed pods include a small prepaid inference allowance.
+- **`byok`** — bring your own OpenAI-compatible key + any machine `plan`. You pay CPU + a small service % only; your AI runs on your key.
+
+```bash
+# Managed Pro pod, paid from credits, with a Telegram bot
+curl -s -X POST https://compute.x402layer.cc/pods \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "openclaw",
+    "ai_mode": "managed",
+    "tier": "pro",
+    "plan": "<plan_id from /compute/plans>",
+    "prepaid_hours": 720,
+    "channels": { "telegram": "<bot_token>" },
+    "use_credits": true
+  }'
+
+# BYOK pod (your own model + key), paid from credits
+curl -s -X POST https://compute.x402layer.cc/pods \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "openclaw", "ai_mode": "byok",
+    "plan": "<plan_id>", "prepaid_hours": 720,
+    "llm_base_url": "https://openrouter.ai/api/v1",
+    "llm_api_key": "<your_llm_key>", "llm_api": "openai-completions",
+    "model": "openai/gpt-4o-mini",
+    "use_credits": true
+  }'
+```
+The response includes the new `pod.id` (this **is** the compute order id — use it for all pod + lifecycle calls) and, for managed pods, a one-time `managed_ai_key` (the pod's key to our managed LLM proxy — shown once).
+
+**Deploy body fields:**
+- `agent_id` — `"openclaw"` (only deployable agent today).
+- `ai_mode` — `"managed"` | `"byok"`.
+- `tier` — managed only: `"starter"` | `"pro"` | `"max"`.
+- `plan` (+ optional `plan_ram_mb` for a pre-flight RAM check) — the machine; managed tiers enforce a RAM floor (pro/max run a browser on the box).
+- `prepaid_hours` — e.g. `720` = 1 month (min 24).
+- `model` — managed: an override that must be in the chosen tier's model list (else it falls back to the tier default); byok: your model id.
+- `llm_base_url`, `llm_api_key`, `llm_api` — byok only. `llm_api` ∈ `openai-completions` (default) | `openai-responses` | `anthropic-messages` | `google-generative`.
+- `channels` — `{ telegram?: token, discord?: token }` (validated against the agent's supported channels; unsupported channels are rejected).
+- `memory` — byok only: `{ backend: "raw"|"mem0", api_key?, lcm? }` (managed memory is tier-driven). Applies only when the memory feature is enabled.
+- `use_credits`, `network`, `ssh_public_key`, `region`, `os_id` — passed straight through to the audited provision path.
+
+### Free 24-hour trial — `POST /pods/trial`
+A free Starter/Pro pod with **no upfront payment** (funded by a one-time credit grant; gated behind a live campaign, so it can answer `503` when off or fully claimed). One per wallet + device. The pod is **auto-destroyed at 24h** (never renews) and its managed-AI allowance is capped.
+```bash
+curl -s -X POST https://compute.x402layer.cc/pods/trial \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "openclaw",
+    "tier": "starter",
+    "plan": "<plan_id>",
+    "device_hash": "<sha256 hex device fingerprint>",
+    "channels": { "telegram": "<bot_token>" }
+  }'
+```
+`tier` must be `starter` or `pro`; `device_hash` is a 64-char sha256 hex. `ai_mode` (managed), `prepaid_hours` (24) and `use_credits` are forced server-side — you supply the tier, plan, device_hash, and any channels.
+
+### Manage a pod
+```bash
+curl -s https://compute.x402layer.cc/pods       -H "X-API-Key: $COMPUTE_API_KEY"   # list yours
+curl -s https://compute.x402layer.cc/pods/<id>  -H "X-API-Key: $COMPUTE_API_KEY"   # details + live heartbeat + masked credential state
+
+# Lifecycle action: restart | redeploy | stop | update | diagnose | logs | pair-approve | cron
+curl -s -X POST https://compute.x402layer.cc/pods/<id>/actions \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"action":"restart"}'
+
+# Link a chat: the bot shows a pairing code in Telegram/Discord; approve it
+curl -s -X POST https://compute.x402layer.cc/pods/<id>/actions \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"action":"pair-approve","channel":"telegram","code":"T64WUC8Q"}'
+
+# Add/replace channels later (queues a redeploy)
+curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/channels \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"channels":{"discord":"<bot_token>"}}'
+
+# Tune the heartbeat / action-poll interval (10–3600s)
+curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/settings \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"heartbeat_interval_sec":30}'
+```
+Actions apply on the pod worker's next poll (≤ 60s). The `cron` action drives the agent's scheduler: `{"action":"cron","verb":"add|enable|disable|remove|run", ...}` (add takes `kind`/`schedule`/`name`/`message`).
+
+### Agent wallet & delegated skill access
+```bash
+# The pod's own wallet — addresses + balances (fund it so the agent can pay for things)
+curl -s https://compute.x402layer.cc/pods/<id>/wallet -H "X-API-Key: $COMPUTE_API_KEY"
+
+# Owner controls: per-tx spend cap + arm sending (default OFF; clamped to a platform ceiling)
+curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/wallet/settings \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"send_enabled":true,"spend_cap_usd":10}'
+
+# Send from / pay an x402 endpoint with the pod wallet (gated; owner is uncapped, the agent is cap-bound):
+#   POST /pods/<id>/wallet/send      {chain, to, token, amount, idempotency_key}
+#   POST /pods/<id>/wallet/x402/pay  {url, method?, headers?, body?, max_amount_usd?}
+```
+`GET /pods/<id>` returns a masked `credentials` block — the preinstalled skills' pod-scoped Compute key + Studio PAT (for the marketplace / MCP) and its daily cap. Manage it with `POST /pods/<id>/credentials` (`{"action":"enable"|"regenerate"|"set-cap"|"byok", ...}`) or `DELETE /pods/<id>/credentials` to revoke. Delegated creds, native Singularity MCP, wallet sending, and memory are **feature-gated** and may be dark until launch.
+
+### Extend / destroy
+A pod is a compute order, so use the **Machines endpoints with the pod id as the instance id**:
+```bash
+# Extend early (credits or x402, same as any Machine)
+curl -s -X POST https://compute.x402layer.cc/compute/instances/<pod.id>/extend \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"extend_hours":720,"use_credits":true}'
+# Destroy (revokes the pod's delegated creds, refunds remaining prepaid time)
+curl -s -X DELETE https://compute.x402layer.cc/compute/instances/<pod.id> -H "X-API-Key: $COMPUTE_API_KEY"
+```
+Managed pods can also **auto-renew** from your credits at expiry (with a grace window) when that feature is enabled; trials never renew. The agent wallet's funds survive destruction (withdraw from the Wallet tab).
+
+### OpenAI-compatible adapter (talk to your pod like any OpenAI endpoint)
+Point any OpenAI SDK at a pod. **v1 is Chat Completions only, non-streaming, `usage:null`**; the model
+is always `agent-pod` (the pod uses its own configured LLM). The adapter surface is **feature-flagged**
+(dark by default) — it answers `404` until enabled.
+```bash
+# 1) Mint a pod-scoped integration key (owner / compute auth). Raw key shown ONCE.
+curl -s -X POST https://compute.x402layer.cc/pods/<id>/api-keys \
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"name":"my-integration"}'
+# → { "key": "sk-sglpod-int-…", "base_url": "https://compute.x402layer.cc/pods/<id>/v1" }
+
+# 2) Call it with Authorization: Bearer <key> (NOT compute auth)
+curl -s -X POST https://compute.x402layer.cc/pods/<id>/v1/chat/completions \
+  -H "Authorization: Bearer sk-sglpod-int-…" -H "Content-Type: application/json" \
+  -d '{"model":"agent-pod","stream":false,"messages":[{"role":"user","content":"Hello"}]}'
+```
+Keys are bound to the pod, carry a daily request cap (default 1000/day → `429` over-cap), and are
+revocable (`DELETE /pods/<id>/api-keys/<keyId>`). Full body fields, response shapes, and error codes
+→ **`references/agent-pods.md`**. Scripted end-to-end: `scripts/agent_pod.py` (`deploy` → `create-key`
+→ `chat`).
+
+---
+
 ## Plan Types
 
 | Type | Plan Prefix | Description |
@@ -461,11 +704,11 @@ updates. Docs: `https://docs.x402layer.cc/cloud/provide/node-setup`.
 
 | Variable | Required For | Description |
 |----------|--------------|-------------|
-| `PRIVATE_KEY` | Base/MegaETH payment signing | EVM private key (0x...) |
-| `WALLET_ADDRESS` | Base/MegaETH direct-signing mode | EVM wallet address (0x...) |
+| `PRIVATE_KEY` | Base/MegaETH/Robinhood payment signing | EVM private key (0x...) |
+| `WALLET_ADDRESS` | Base/MegaETH/Robinhood direct-signing mode | EVM wallet address (0x...) |
 | `SOLANA_SECRET_KEY` | Solana direct-signing mode | Solana signer key (base58 or JSON byte array) |
 | `SOLANA_WALLET_ADDRESS` | Solana direct-signing mode | Solana wallet address (optional if derivable from secret) |
-| `COMPUTE_AUTH_CHAIN` | Chain auth override | `base`, `megaeth`, or `solana` |
+| `COMPUTE_AUTH_CHAIN` | Chain auth override | `base`, `megaeth`, `robinhood`, or `solana` |
 | `COMPUTE_API_KEY` | Optional | Reusable API key for compute management endpoints |
 | `COMPUTE_AUTH_MODE` | Optional | `auto`, `private-key`, or `ows` |
 | `OWS_WALLET` | OWS auth mode | OWS wallet name or ID |
@@ -478,6 +721,9 @@ updates. Docs: `https://docs.x402layer.cc/cloud/provide/node-setup`.
 
 For full endpoint details, see:
 - [references/api-reference.md](references/api-reference.md)
+- [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
+- [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
+- [references/node-operator.md](references/node-operator.md) — run a grid node (provide compute, earn)
 - [references/openwallet-ows.md](references/openwallet-ows.md)
 
 ---
@@ -496,5 +742,5 @@ For full endpoint details, see:
 
 OWS support is optional-first in this release:
 - use it for compute auth and management/API-key flows
-- keep direct Base, MegaETH, or Solana signing keys for the paid provision and extend flows
+- keep direct Base, MegaETH, Robinhood, or Solana signing keys for the paid provision and extend flows
 - resize, list, details, password fallback, and destroy work with normal compute auth / API keys
