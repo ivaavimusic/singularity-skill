@@ -14,13 +14,18 @@ description: |
   "stake to run a node", "serve a model on the grid", "earn from compute",
   "deploy an always-on AI agent", "deploy a hosted OpenClaw agent", "spin up a ClawPod",
   "agent pod", "hosted agent with its own wallet", "free agent trial",
-  or manage Singularity Cloud Network compute. Five jobs: SGL Machines
+  "deploy a processor", "sell my code per call", "monetize an endpoint",
+  "publish a paid API", "connect a processor as an MCP tool",
+  or manage Singularity Cloud Network compute. Six jobs: SGL Machines
   (GPU/VPS provisioning across Vultr & DigitalOcean), AI Machines (one-click GPU
   running an LLM — deploy a private OpenAI-compatible endpoint, or join the grid & earn),
   SGL Grid (decentralized, confidential, OpenAI-compatible inference — consume it),
   Provide Compute (run a TEE node on the grid to serve inference and earn USDC + SGL), and
   Agent Pods (deploy an always-on hosted OpenClaw agent with its own crypto wallet, memory,
-  and preinstalled x402 skills — managed or BYOK, tiers, free 24h trial). Pay with
+  and preinstalled x402 skills — managed or BYOK, tiers, free 24h trial), and
+  Processors (publish your own code as a paid endpoint — buyers pay you directly in USDC via
+  x402, you pay only for runtime; every processor is also a connectable MCP server, so agents,
+  harnesses and LangGraph nodes can call it with just a URL). Pay with
   USDC on Base or Solana, USDm on MegaETH, USDG on Robinhood Chain via x402, optional MPP/Mppx, or
   pre-loaded USD credits. Includes optional OWS-backed auth and management flows.
 homepage: https://docs.x402layer.cc/agentic-access/x402-compute
