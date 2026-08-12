@@ -3,7 +3,7 @@
 Portable skills.sh distribution for x402 Studio and the Singularity Layer. Two skills:
 
 - **`singularity`** (`v1.11.1`) — full-platform marketplace & payments: pay/consume APIs in USDC, deploy monetized endpoints, credits, webhooks, marketplace listings, ERC-8004 agent registration, AWAL/OWS, multi-chain.
-- **`x402-compute`** (`v1.13.0`) — the **Singularity Cloud Network**: rent GPU/VPS instances (SGL Machines), run confidential OpenAI-compatible inference (SGL Grid), and operate a node to earn USDC + SGL.
+- **`x402-compute`** (`v1.14.0`) — the **Singularity Cloud Network**: rent GPU/VPS instances (SGL Machines), run confidential OpenAI-compatible inference (SGL Grid), and operate a node to earn USDC + SGL.
 
 ## Install
 

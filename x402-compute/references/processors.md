@@ -1,37 +1,60 @@
 # SGL Processors
 
-Deploy one function; get a paid HTTP endpoint and a live MCP server.
+Deploy one function; get a paid HTTP endpoint, an OpenAPI document, and a live MCP server.
 
-**Status:** built and tested end to end on production with real USDC. Publishing is not open yet —
-`PROCESSORS_PAYMENTS_ENABLED` and `PROCESSORS_RUNTIME_BILLING_ENABLED` are off. Do not tell a user
-they can publish today.
+**Status:** LIVE. Buyer payments (`PROCESSORS_PAYMENTS_ENABLED`) and publisher runtime billing
+(`PROCESSORS_RUNTIME_BILLING_ENABLED`) are both ON, and the API and CLI are fully usable. The
+**dashboard UI is still dark** (`NEXT_PUBLIC_ENABLE_PROCESSORS=false` in the cloud app), so publish and
+manage through the CLI. An earlier version of this file said publishing was not open — that is out of
+date; do not repeat it.
 
 **Base URL:** `https://processors.x402compute.cc`
 
 ## The model, in one paragraph
 
-A processor is a single typed function we host. The BUYER pays the PUBLISHER **directly** in USDC
-over x402 — Singularity never holds it and takes **no cut of sales**. The PUBLISHER pays us for
-compute instead: before each run we hold the maximum it could cost (derived from the `timeout_ms`
-they declared) and rebate the unused part afterwards. That is the platform's only revenue.
+A processor is a function we host. The BUYER pays the PUBLISHER **directly** in USDC over x402 —
+Singularity never holds it and takes **no cut of sales**. The PUBLISHER pays us for compute instead:
+before each run we hold the maximum it could cost (derived from the `timeout_ms` they declared) and
+rebate the unused part afterwards. That is the platform's only revenue.
 
-Not a TEE. Execution is an isolated V8 sandbox on Cloudflare's edge — same isolation model as a
-Worker. For hardware-attested confidentiality use SGL Grid or a confidential Machine instead.
-An older version of the docs claimed TEE; it was wrong.
+Not a TEE. Execution is an isolated V8 sandbox on Cloudflare's edge — the same isolation model as a
+Worker. For hardware-attested confidentiality use SGL Grid or a confidential Machine instead. An older
+version of these docs claimed TEE; it was wrong.
 
 ## Publisher flow (CLI)
 
 ```bash
-npm i -g @singularity-layer/cli
-singularity processors init <slug>     # scaffolds processor.json + processor.js
-singularity processors deploy          # prints the invoke token ONCE
-singularity processors run '{"x":1}'   # owner run
-singularity processors logs            # runs + failure rate
-singularity processors publish         # list it publicly
-singularity processors earnings        # sales (to their wallet) + compute spend
+npm i -g @singularity-layer/cli          # package is scoped; the command is `singularity`
+singularity processors init <slug>       # scaffolds processor.json + processor.js
+singularity processors deploy            # prints the invoke token ONCE
+singularity processors run '{"x":1}'     # owner run
+singularity processors call -i           # prompts per field, from your own input_schema
+singularity processors logs              # runs + failure rate; --follow to tail
+singularity processors publish           # list it publicly, instantly, no review
+singularity processors revenue           # sales + compute across everything you own
+singularity processors pause | resume    # stop traffic WITHOUT losing the slug
 ```
 
 Auth is a Solana wallet signature; the key never leaves the machine.
+
+## TypeScript and npm packages
+
+```bash
+npm i zod
+singularity processors deploy --bundle --entry processor.ts
+```
+
+`--bundle` runs esbuild **on the publisher's machine**. We never run `npm install` for them: a
+postinstall script is arbitrary code, and running it on infrastructure holding platform credentials is
+not something scanning makes safe. The bundle crosses the boundary; `node_modules` never does.
+
+The bundler targets a Worker isolate, so a dependency reaching for `fs`, `child_process` or raw sockets
+fails at deploy time on their terminal — naming the importer — rather than inside a run a buyer already
+paid for.
+
+Going back to a single file needs `--no-bundle`: a stored bundle keeps winning at load time, so plain
+`code` would silently never take effect, and the server refuses the ambiguous update rather than
+accepting it.
 
 ## Manifest essentials
 
@@ -40,11 +63,20 @@ Auth is a Solana wallet signature; the key never leaves the machine.
   "slug": "…", "name": "…", "description": "…",
   "lane": "managed",
   "price_usd": "0.01",
+  "methods": ["GET", "POST"],
   "input_schema": {…}, "output_schema": {…},
   "limits": { "timeout_ms": 5000, "cpu_ms": 1000, "subrequests": 1 },
   "egress": { "allow": ["api.example.com"] },
-  "secrets": [{ "name": "KEY", "hosts": ["api.example.com"],
-                "inject": { "header": "Authorization", "format": "Bearer {value}" } }],
+  "secrets": [
+    { "name": "KEY", "hosts": ["api.example.com"],
+      "inject": { "header": "Authorization", "format": "Bearer {value}" } },
+    { "name": "SIGNING_KEY", "mode": "env" }
+  ],
+  "pricing": {
+    "mode": "computed", "base_usd": "0.01",
+    "units": [{ "field": "items", "measure": "length", "per_unit_usd": "0.005" }],
+    "max_usd": "1.00"
+  },
   "inference": { "provider": "singularity", "model": "qwen-2.5-7b", "api_key_secret": "KEY" }
 }
 ```
@@ -53,14 +85,98 @@ Rules that bite:
 - `limits.subrequests` must be >= 1; `timeout_ms` <= 600000; `cpu_ms` <= 30000.
 - Every host in `secrets[].hosts` must ALSO appear in `egress.allow`.
 - `inject.format` must contain the literal `{value}` placeholder.
-- Slugs are lowercase, permanent, and never reusable.
+- Slugs are lowercase, permanent, and never reusable — `pause` exists so nobody burns one to stop traffic.
 - Egress rejects wildcards, `host:port`, URLs, IP literals, and internal names.
+- `sgl-ctx.internal` must NOT be allowlisted. It is reserved for processor state and needs no entry.
+
+## Secrets: two modes, and the difference is the point
+
+`inject` (the DEFAULT) — the value **never enters the isolate**. Code calls `fetch()` with no
+credential and the egress gateway adds the header server-side, for the declared hosts and nowhere else.
+Code that never holds a key cannot leak the key.
+
+`mode: "env"` — the value IS readable by the publisher's code, via `await SGL.secrets.get('NAME')`.
+This is a real downgrade and is opt-in per secret. Once their code holds it, it can print it into their
+captured logs or send it to any host in their egress allowlist, and we cannot stop either. It exists
+because refusing it is worse: a key used to sign something locally has no outbound header to be
+injected into, and the alternative people reach for is hard-coding it in their source.
+
+**An inject-mode secret is NOT readable via `SGL.secrets.get()`** — it returns null, exactly as for a
+name that was never declared. Never tell a user to read an injected secret from their code.
+
+`singularity processors env list` shows which of theirs is which.
+
+## Processor state
+
+A processor is a fresh isolate every run, so anything kept between runs goes here. None of it needs an
+`egress.allow` entry — it is not the network.
+
+```js
+// Key/value: a cursor, a cache, a dedupe set. Opaque strings, byte-exact both ways.
+await SGL.kv.put('cursor', '2026-08-12');
+const cursor = await SGL.kv.get('cursor');
+
+// Compare-and-swap, because concurrent runs of one processor are normal, not an edge case.
+const cur = await SGL.kv.getWithVersion('count');
+await SGL.kv.put('count', String(Number(cur.value) + 1), { ifVersion: cur.version });
+// A mismatch throws with err.code === 'version_conflict' and err.currentVersion. Re-read and retry.
+
+// Objects: a generated PDF, an image, a dataset.
+await SGL.files.put('reports/august.pdf', bytes, { contentType: 'application/pdf' });
+const { url } = await SGL.files.downloadUrl('reports/august.pdf', { ttlSeconds: 3600 });
+```
+
+Limits: 10,000 keys, 1 KiB key, 64 KiB value; 100 MiB of files, 10 MiB per object, 10,000 objects.
+`SGL.kv.list()` and `SGL.files.list()` paginate and never return values.
+
+`downloadUrl` is a signed expiring link a buyer can fetch with **no credential**. It is always served
+as an attachment with a forced `application/octet-stream` type — the publisher's declared type is never
+echoed — so a stored HTML or SVG file cannot execute. Treat it as a **bearer link**: anyone who obtains
+it can download until it expires (default 1h, max 24h).
+
+State is deleted when the processor is deleted.
+
+## Console output
+
+`console.log` / `warn` / `error` from inside a run is captured and readable per run:
+
+```bash
+singularity processors logs                    # the run list
+singularity processors logs --logs <run_id>    # that run's own output
+```
+
+Capped, stripped of terminal escape sequences, and deleted with the run after 30 days. It is
+best-effort observability, never evidence: publisher code can bypass the shim that produces it.
+Anything their code printed is there — including anything a caller sent them, if they printed it.
+
+## Pricing: flat, or computed from the input
+
+Flat is the default: `price_usd` and nothing else.
+
+With a `pricing` block the price depends on the buyer's own input. It is a **declarative formula, never
+publisher code** — running their code to price a request would be unpaid execution available to anyone
+sending a probe, and would let the price depend on a clock or a counter, so a buyer could be quoted one
+number and charged another.
+
+- `measure`: `length` (array length), `bytes` (UTF-8 byte length of a string), `value` (a number the
+  buyer supplies). `unit_size` charges per N units, rounded UP.
+- `field` is a **top-level** key of `input`. No paths.
+- `max_usd` is REQUIRED — it is how a buyer bounds what they agree to.
+- `base_usd` must equal `price_usd`, and `price_usd` is then the **FLOOR**, not the price. The
+  catalogue reports `price_varies`, and the OpenAPI/MCP annotation carries
+  `amount_is_minimum`, `min`, `max` and the full formula.
+
+To get the exact price: send a 402 request with the input you intend to use. The response carries
+`quote`, `quote_usd` and the formula. Echoing `X-SGL-Quote: <quote>` when paying is optional; a
+mismatch is a 409 that charges nothing, which protects a buyer whose input changed after quoting.
+
+Changing the input between the quote and the payment cannot underpay: the price is recomputed and the
+payment is rejected.
 
 ## Grid inference from inside a processor
 
-Declare `inference.provider: "singularity"`, allowlist `grid.x402compute.cc`, and store a compute
-API key (`x402c_…`) as the named secret. The gateway injects it on egress — the isolate never sees
-it. Then just call the OpenAI-compatible endpoint:
+Declare `inference.provider: "singularity"`, allowlist `grid.x402compute.cc`, and store a compute API
+key (`x402c_…`) as the named secret. The gateway injects it on egress — the isolate never sees it.
 
 ```js
 await fetch('https://grid.x402compute.cc/v1/chat/completions', {
@@ -82,25 +198,39 @@ Grid usage bills the KEY OWNER's credits, separately from processor runtime.
 No credential on a paid processor returns `402` with x402 requirements whose `payTo` is the
 **publisher's** wallet.
 
+A processor may answer `GET` as well as `POST` (`methods` in the manifest, both by default). On a GET
+the input is the query string, and the payment `resource` includes it — so a 402 quoted for
+`?amount=1` cannot be paid with `?amount=1000000`.
+
 Long runs return `202` + `poll_url` + run token; send `Prefer: respond-async` to skip the wait.
+
+A **paused** processor returns 404 to anonymous buyers (no 402 is issued, so nobody pays for work that
+will be refused) and 503 `paused` to invoke-token callers. The owner can still run it, which is how a
+publisher verifies a fix before resuming.
 
 ## MCP
 
 `POST /processors/<slug>/mcp` is a stateless MCP server (2026-07-28; `initialize` also answered for
-2025 clients). `server/discover`, `tools/list` and `ping` are free; `tools/call` is charged and
-accepts the same `X-Payment` / bearer headers. `GET` on that path returns a descriptor;
-`GET` with `Accept: text/event-stream` returns 405 (no SSE — it is stateless).
+2025 clients). `server/discover`, `tools/list` and `ping` are free; `tools/call` is charged and accepts
+the same `X-Payment` / bearer headers. `GET` on that path returns a descriptor; `GET` with
+`Accept: text/event-stream` returns 405 (no SSE — it is stateless).
 
 ## Billing rules to state accurately
 
 - A run that RAN and failed is **billed** — the compute was spent. It counts in the public failure rate.
-- A run that never started because of a platform fault is **refunded in full**, automatically.
-- Refused before starting (no input, concurrency cap, insufficient balance) — **nothing held**.
-- No minimum price. Publishers may charge anything, including less than compute costs; that is
-  their decision and the dashboard shows them the margin.
+- A run that never started because of a platform fault is **refunded in full**, automatically, and is
+  excluded from the failure rate.
+- Refused before starting (no input, concurrency cap, insufficient balance, wrong method, paused) —
+  **nothing held**.
+- No minimum price beyond "greater than zero once payments are armed". Publishers may charge less than
+  compute costs; that is their decision.
 
-## Gotcha worth warning users about
+## Gotchas worth warning users about
 
-A publisher's payout wallet must already be able to receive USDC. Solana cannot transfer a token to
-an account that does not exist, and the x402 payer does not create one — so a brand-new wallet's
-first sale would fail. Publishing is refused with instructions: send any USDC to the wallet once.
+A publisher's payout wallet must already be able to receive USDC. Solana cannot transfer a token to an
+account that does not exist, and the x402 payer does not create one — so a brand-new wallet's first
+sale would fail. Publishing is refused with instructions: send any USDC to the wallet once.
+
+Unlisting is NOT stopping. An unlisted processor is out of the catalogue but its endpoint keeps
+answering anyone holding the URL or an invoke token, and each of those runs still bills the publisher's
+runtime. `pause` is the switch that stops traffic; `delete` is permanent and burns the slug forever.
