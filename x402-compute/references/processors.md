@@ -93,13 +93,16 @@ Rules that bite:
 
 `inject` (the DEFAULT) — the value **never enters the isolate**. Code calls `fetch()` with no
 credential and the egress gateway adds the header server-side, for the declared hosts and nowhere else.
-Code that never holds a key cannot leak the key.
+The permitted claim is: the key is held by our egress gateway and is not readable from the code's
+environment. DO NOT say it cannot be leaked — publisher code can still SPEND it against an allowlisted
+host, and a host that echoes request headers hands the value straight back.
 
 `mode: "env"` — the value IS readable by the publisher's code, via `await SGL.secrets.get('NAME')`.
-This is a real downgrade and is opt-in per secret. Once their code holds it, it can print it into their
-captured logs or send it to any host in their egress allowlist, and we cannot stop either. It exists
-because refusing it is worse: a key used to sign something locally has no outbound header to be
-injected into, and the alternative people reach for is hard-coding it in their source.
+This is a real downgrade and is opt-in per secret. Once the value is in the isolate it can be printed
+into their captured logs or sent to any host in their egress allowlist, and we cannot stop either. It is
+readable by EVERY BUNDLED DEPENDENCY too, not just the code they wrote — anything in that isolate can
+call `SGL.secrets.get()`. It exists because refusing it is worse: a key used to sign something locally
+has no outbound header to be injected into, and the alternative people reach for is hard-coding it.
 
 **An inject-mode secret is NOT readable via `SGL.secrets.get()`** — it returns null, exactly as for a
 name that was never declared. Never tell a user to read an injected secret from their code.
@@ -132,7 +135,8 @@ Limits: 10,000 keys, 1 KiB key, 64 KiB value; 100 MiB of files, 10 MiB per objec
 `downloadUrl` is a signed expiring link a buyer can fetch with **no credential**. It is always served
 as an attachment with a forced `application/octet-stream` type — the publisher's declared type is never
 echoed — so a stored HTML or SVG file cannot execute. Treat it as a **bearer link**: anyone who obtains
-it can download until it expires (default 1h, max 24h).
+it can download until it expires (default 1h, max 24h), so it must not be logged, put in a public page,
+or sent anywhere the file itself would not be sent.
 
 State is deleted when the processor is deleted.
 
@@ -145,9 +149,10 @@ singularity processors logs                    # the run list
 singularity processors logs --logs <run_id>    # that run's own output
 ```
 
-Capped, stripped of terminal escape sequences, and deleted with the run after 30 days. It is
-best-effort observability, never evidence: publisher code can bypass the shim that produces it.
-Anything their code printed is there — including anything a caller sent them, if they printed it.
+Every `console.log/warn/error/info/debug` call is captured, capped, stripped of terminal escape
+sequences, and deleted with the run after 30 days. Best-effort observability, never evidence: it records
+what the code asked `console` to print, and publisher code can bypass the shim. Anything they printed is
+there — including anything a caller sent them, if they printed it.
 
 ## Pricing: flat, or computed from the input
 
@@ -232,5 +237,7 @@ account that does not exist, and the x402 payer does not create one — so a bra
 sale would fail. Publishing is refused with instructions: send any USDC to the wallet once.
 
 Unlisting is NOT stopping. An unlisted processor is out of the catalogue but its endpoint keeps
-answering anyone holding the URL or an invoke token, and each of those runs still bills the publisher's
-runtime. `pause` is the switch that stops traffic; `delete` is permanent and burns the slug forever.
+answering anyone holding the URL or an invoke token; those calls earn the publisher nothing and still
+draw COMPUTE from their credit balance. `pause` is the switch that stops traffic; `delete` is permanent
+and burns the slug forever. Note an owner-signed run on a PAUSED processor still costs compute — a run
+costs us the same whoever triggered it.
