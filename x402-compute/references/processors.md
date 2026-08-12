@@ -192,6 +192,21 @@ await fetch('https://grid.x402compute.cc/v1/chat/completions', {
 
 Grid usage bills the KEY OWNER's credits, separately from processor runtime.
 
+## Which chain — SOLANA ONLY, and this is the one place the skill's global rails do not apply
+
+The skill header lists x402 on Base, Solana, MegaETH and Robinhood Chain. Those are the rails for
+**Machines, Pods and credit top-ups**. Paying a PROCESSOR is different, and narrower:
+
+| | |
+|---|---|
+| Buyer payment | **USDC on Solana only.** The 402 hardcodes `network: 'solana'` and the USDC mint; there is no Base, MegaETH or Robinhood option for a processor call. An EVM payment fails verification. |
+| Publisher payout wallet | **Solana.** It is where buyers send USDC directly, and it must already hold a USDC token account. |
+| Owner / CLI auth | **Solana wallet signature.** The worker answers 501 for any other chain rather than trusting the address header. |
+| Publisher's own runtime cost | Credits, which CAN be topped up on any of the four rails. |
+
+So: a buyer needs a Solana wallet with USDC. Do NOT tell a user they can pay a processor from Base
+because the platform supports Base elsewhere — they will build a payment the facilitator rejects.
+
 ## Calling a processor
 
 | Caller | Header | Who pays |

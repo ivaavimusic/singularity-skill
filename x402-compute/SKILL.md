@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.14.0
+version: 1.14.1
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
@@ -87,6 +87,7 @@ Products share one credit balance and one set of wallet/API-key auth:
 Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and prepaid credit balance work across Machines and Grid.
 
 **x402 Networks:** Base (EVM) • Solana • MegaETH • Robinhood Chain (EVM)
+**Exception — PROCESSORS take USDC on SOLANA ONLY** (buyer payment, publisher payout, and owner auth are all Solana). The four rails above are for Machines, Pods and credit top-ups. See `references/processors.md`.
 **x402 Currency:** USDC (Base/Solana) • USDm (MegaETH) • USDG (Robinhood Chain)
 **MPP Methods:** Tempo • Stripe/card when enabled by the service
 **Credits:** Pre-load USD via x402 topup, then provision/extend (`use_credits: true`) or call the Grid with `X-API-Key`
