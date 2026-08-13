@@ -240,6 +240,23 @@ recipient.
 | The `canReceiveUsdc` publish check | **Solana only.** Solana cannot transfer an SPL token to an account that does not exist, so publishing is refused until the Solana payout wallet holds a USDC token account. Base and Robinhood have no equivalent requirement. |
 | Publisher's own runtime cost | Credits, which can be topped up on any of the platform's four rails. |
 
+### Refunds do not exist, and an agent must not promise one
+
+**A processor payment is final.** The buyer's funds move directly to the publisher's wallet; the platform
+is never the recipient and holds nothing, so there is nothing for it to return. Do not tell a user a
+failed run can be refunded.
+
+What to do instead when a paid run does not deliver:
+
+1. **Re-send the request with the SAME `X-Payment` header.** It returns the run that payment already
+   bought and does NOT charge again. This is the recovery path for every failure mode — bad code, a
+   platform fault, or a response lost in flight. The `run_id` from the original response identifies it.
+2. **Before paying, read `failure_rate_30d`** on the catalogue entry. Platform faults are excluded from
+   it, so it measures the publisher's own code. That is the buyer's protection, in place of a refund.
+
+The publisher's held compute cost IS returned to them when the platform is at fault — that is a separate
+flow and does not involve the buyer.
+
 ### Address rules that cost money to get wrong
 
 - Addresses are stored **exactly as written**. Never normalise or lowercase one.
