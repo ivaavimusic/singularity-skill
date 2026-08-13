@@ -192,20 +192,64 @@ await fetch('https://grid.x402compute.cc/v1/chat/completions', {
 
 Grid usage bills the KEY OWNER's credits, separately from processor runtime.
 
-## Which chain — SOLANA ONLY, and this is the one place the skill's global rails do not apply
+## Which chain a buyer pays on, and what the publisher must declare
 
-The skill header lists x402 on Base, Solana, MegaETH and Robinhood Chain. Those are the rails for
-**Machines, Pods and credit top-ups**. Paying a PROCESSOR is different, and narrower:
+Three chains. The publisher chooses which of them their processor accepts; the default is Solana alone.
+
+| Chain | Asset | Publisher's payout address |
+|---|---|---|
+| `solana` | USDC (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`) | base58 wallet — **the default**, taken from the deploying wallet |
+| `base` | USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) | `0x…` |
+| `robinhood` | USDG (`0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`) | `0x…` |
+
+MegaETH is **not** a processor rail, even though the platform settles it for Machines and credit top-ups.
+
+A manifest with no `payout` block is paid in USDC on Solana at the deploying wallet, which is how every
+processor worked before this existed. To accept more:
+
+```json
+{
+  "price_usd": "0.01",
+  "payout": {
+    "solana": "<base58 wallet>",
+    "base": "0x…",
+    "robinhood": "0x…"
+  }
+}
+```
+
+**ONE `price_usd` IS THE PRICE ON EVERY CHAIN.** All three assets are 6-decimal stablecoins, so $0.01 is
+`10000` micro-units whichever one settles. There is no per-chain price and no conversion.
+
+### What this means for a buyer
+
+The 402 carries **one `accepts` entry per chain that processor accepts**, so read the array rather than
+assuming a single entry. Match on `network` — `solana`, `base`, or `robinhood` (the CAIP-2 spellings
+`eip155:8453` and `eip155:4663` are also accepted on the way in) — pick the one the wallet can sign for,
+and pay that entry. `maxAmountRequired` is identical on all of them.
+
+A network the processor did not declare is refused at settlement, not silently accepted: the buyer's
+`network` selects one of OUR offered rows and is never trusted for the asset, the amount, or the
+recipient.
+
+### What still has to be Solana
 
 | | |
 |---|---|
-| Buyer payment | **USDC on Solana only.** The 402 hardcodes `network: 'solana'` and the USDC mint; there is no Base, MegaETH or Robinhood option for a processor call. An EVM payment fails verification. |
-| Publisher payout wallet | **Solana.** It is where buyers send USDC directly, and it must already hold a USDC token account. |
-| Owner / CLI auth | **Solana wallet signature.** The worker answers 501 for any other chain rather than trusting the address header. |
-| Publisher's own runtime cost | Credits, which CAN be topped up on any of the four rails. |
+| Owner / CLI auth | **Solana wallet signature.** The worker answers 501 for any other chain rather than trusting an address header. Separate from how the publisher is paid. |
+| The `canReceiveUsdc` publish check | **Solana only.** Solana cannot transfer an SPL token to an account that does not exist, so publishing is refused until the Solana payout wallet holds a USDC token account. Base and Robinhood have no equivalent requirement. |
+| Publisher's own runtime cost | Credits, which can be topped up on any of the platform's four rails. |
 
-So: a buyer needs a Solana wallet with USDC. Do NOT tell a user they can pay a processor from Base
-because the platform supports Base elsewhere — they will build a payment the facilitator rejects.
+### Address rules that cost money to get wrong
+
+- Addresses are stored **exactly as written**. Never normalise or lowercase one.
+- A mixed-case `0x` address is validated against its **EIP-55 checksum**; deploy names the address it
+  thinks was meant. An all-lowercase `0x` address carries no checksum and is accepted as written.
+- A Solana address is checked as base58 and decoded to confirm 32 bytes. There is **no** way to detect a
+  lowercased Solana address — base58 is case-sensitive and lowercase letters are legal in it, so a folded
+  wallet is a different, still-valid-looking account. Do not case-fold one, ever.
+- Payments are irreversible and go straight to the publisher. Tell a user to paste an address, not retype
+  it.
 
 ## Calling a processor
 
