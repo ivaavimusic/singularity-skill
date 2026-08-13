@@ -221,6 +221,23 @@ processor worked before this existed. To accept more:
 **ONE `price_usd` IS THE PRICE ON EVERY CHAIN.** All three assets are 6-decimal stablecoins, so $0.01 is
 `10000` micro-units whichever one settles. There is no per-chain price and no conversion.
 
+### Robinhood is offered ON REQUEST, and this matters if you write a client
+
+The 402 lists **Solana and Base** by default. **Robinhood is withheld unless you ask for it**, with:
+
+```
+X-Accept-Networks: solana,base,robinhood
+```
+
+WHY, because it is not arbitrary: the reference x402 client validates the WHOLE `accepts` array against a
+fixed list of chain names and throws on the first one it does not recognise, instead of skipping that
+entry. Robinhood is Singularity's own self-facilitated rail and is not on that list. So including it
+unprompted stops a conformant buyer paying on Solana or Base either — chains they hold, that were on
+offer. Sending the header says "I parse the array myself".
+
+Robinhood payments work exactly as before; nothing about settlement changed. And a processor paid ONLY on
+Robinhood advertises it regardless — hiding it would leave an empty 402.
+
 ### What this means for a buyer
 
 The 402 carries **one `accepts` entry per chain that processor accepts**, so read the array rather than

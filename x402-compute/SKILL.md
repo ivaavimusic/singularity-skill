@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.16.0
+version: 1.17.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
@@ -87,7 +87,7 @@ Products share one credit balance and one set of wallet/API-key auth:
 Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and prepaid credit balance work across Machines and Grid.
 
 **x402 Networks:** Base (EVM) • Solana • MegaETH • Robinhood Chain (EVM)
-**PROCESSORS accept Solana, Base and Robinhood Chain — NOT MegaETH.** A publisher declares a `payout` address per chain (default: USDC on Solana at their deploying wallet), and the 402 carries ONE `accepts` ENTRY PER DECLARED CHAIN — read the array, do not assume one entry. `maxAmountRequired` is the same integer on every entry because all three assets are 6-decimal. Owner/CLI auth is still a Solana signature. **A processor payment is FINAL — there are no refunds**; the recovery path for a failed paid run is re-sending the same `X-Payment` header, which returns the run already bought rather than charging again. See `references/processors.md`.
+**PROCESSORS accept Solana, Base and Robinhood Chain — NOT MegaETH.** A publisher declares a `payout` address per chain (default: USDC on Solana at their deploying wallet), and the 402 carries ONE `accepts` ENTRY PER DECLARED CHAIN — read the array, do not assume one entry. `maxAmountRequired` is the same integer on every entry because all three assets are 6-decimal. **Robinhood is offered only on request** (`X-Accept-Networks: solana,base,robinhood`) because the reference x402 client rejects an entire `accepts` array containing a name it does not know. Owner/CLI auth is still a Solana signature. **A processor payment is FINAL — there are no refunds**; the recovery path for a failed paid run is re-sending the same `X-Payment` header, which returns the run already bought rather than charging again. See `references/processors.md`.
 **x402 Currency:** USDC (Base/Solana) • USDm (MegaETH) • USDG (Robinhood Chain)
 **MPP Methods:** Tempo • Stripe/card when enabled by the service
 **Credits:** Pre-load USD via x402 topup, then provision/extend (`use_credits: true`) or call the Grid with `X-API-Key`
