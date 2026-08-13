@@ -1,0 +1,5 @@
+
+# Agent tooling state — never part of a published skill.
+.omx/
+__pycache__/
+*.pyc
