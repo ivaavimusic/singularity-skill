@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.18.1
+version: 1.19.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
@@ -718,6 +718,7 @@ unlimited snapshots, 5 GiB (POST /backups/subscribe or dashboard → Upgrade).
 npm i -g @singularity-layer/agentvault
 agentvault login          # browser wallet approval (or --api-key)
 agentvault backup --all   # encrypt + upload every detected agent
+agentvault backup --path ~/my-agent --name "My Agent"   # ANY directory (universal)
 agentvault restore        # bring an agent back, anywhere
 ```
 

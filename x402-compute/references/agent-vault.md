@@ -26,6 +26,7 @@ npm i -g @singularity-layer/agentvault
 agentvault login              # browser wallet approval (device flow)
 agentvault login --api-key    # headless: paste a compute API key instead
 agentvault backup --all       # detect, encrypt, upload every local agent
+agentvault backup --path <dir> --name <n>   # UNIVERSAL: vault any directory (any harness)
 agentvault list               # agents + snapshot counts
 agentvault restore            # pick snapshot -> passphrase -> safe unpack
 agentvault restore --dest ~/x # restore into a specific directory
