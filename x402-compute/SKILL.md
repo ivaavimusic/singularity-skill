@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.18.0
+version: 1.18.1
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
@@ -710,8 +710,9 @@ revocable (`DELETE /pods/<id>/api-keys/<keyId>`). Full body fields, response sha
 Zero-knowledge encrypted snapshots of an agent's entire state (memory, soul,
 config, skills) for OpenClaw and Hermes — restorable on any machine or pod.
 Encryption happens on the agent's own machine; the platform stores ciphertext
-it cannot read, so **a lost passphrase is unrecoverable**. Free at launch;
-caps 5 GiB/wallet, 2 GiB/snapshot.
+it cannot read, so **a lost passphrase is unrecoverable**. Plans: FREE = one
+rolling snapshot (new replaces old), 1 GiB. VAULT PRO = $3/month from credits,
+unlimited snapshots, 5 GiB (POST /backups/subscribe or dashboard → Upgrade).
 
 ```bash
 npm i -g @singularity-layer/agentvault

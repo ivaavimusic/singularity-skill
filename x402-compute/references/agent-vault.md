@@ -12,7 +12,11 @@ passphrase is unrecoverable by anyone, including Singularity Layer.** Tell the
 user to write it down before the first backup.
 
 Dashboard: https://cloud.x402compute.cc/network/backups
-Pricing: free at launch. Hard caps: 5 GiB per wallet, 2 GiB per snapshot.
+Plans: FREE = 1 rolling snapshot (each new backup replaces the previous), 1 GiB.
+VAULT PRO = $3/month from credits — unlimited snapshots, 5 GiB, full history
+(`POST /backups/subscribe`, or dashboard → Agent Vault → Upgrade). A failed
+renewal downgrades behavior only; stored backups are never deleted.
+Per-snapshot cap: 2 GiB.
 
 ## CLI (the normal path)
 
