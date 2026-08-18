@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.17.0
+version: 1.18.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
@@ -16,7 +16,9 @@ description: |
   "agent pod", "hosted agent with its own wallet", "free agent trial",
   "deploy a processor", "sell my code per call", "monetize an endpoint",
   "publish a paid API", "connect a processor as an MCP tool",
-  or manage Singularity Cloud Network compute. Six jobs: SGL Machines
+  "back up my agent", "agent backup", "restore my agent", "migrate my agent",
+  "agent vault", "snapshot my agent's memory", "move my agent to a new machine",
+  or manage Singularity Cloud Network compute. Seven jobs: SGL Machines
   (GPU/VPS provisioning across Vultr & DigitalOcean), AI Machines (one-click GPU
   running an LLM — deploy a private OpenAI-compatible endpoint, or join the grid & earn),
   SGL Grid (decentralized, confidential, OpenAI-compatible inference — consume it),
@@ -25,7 +27,10 @@ description: |
   and preinstalled x402 skills — managed or BYOK, tiers, free 24h trial), and
   Processors (publish your own code as a paid endpoint — buyers pay you directly in USDC via
   x402, you pay only for runtime; every processor is also a connectable MCP server, so agents,
-  harnesses and LangGraph nodes can call it with just a URL). Pay with
+  harnesses and LangGraph nodes can call it with just a URL), and Agent Vault
+  (zero-knowledge encrypted backup, restore & migration for OpenClaw/Hermes agents —
+  snapshot an agent's memory and soul, store it encrypted, restore or migrate it to any
+  machine or pod). Pay with
   USDC on Base or Solana, USDm on MegaETH, USDG on Robinhood Chain via x402, optional MPP/Mppx, or
   pre-loaded USD credits. Includes optional OWS-backed auth and management flows.
 homepage: https://docs.x402layer.cc/agentic-access/x402-compute
@@ -200,6 +205,7 @@ reference you need).
 | **"deploy an agent pod"**, "hosted OpenClaw/ClawPod", "always-on AI agent with its own wallet", "free 24h agent trial" | **`agent_pod.py deploy`** (or `catalog`/`list`/`get`) | **`references/agent-pods.md`** |
 | **"call my pod via the OpenAI API"**, "give my pod an OpenAI-compatible endpoint", "get an API key for my agent pod" | **`agent_pod.py create-key` then `agent_pod.py chat`** | **`references/agent-pods.md`** |
 | **"telegram community manager"**, "TGPod", "moderate my telegram group", "bot that answers members and removes scams", "discord community manager" (soon) | **`agent_pod.py templates`** then **`agent_pod.py deploy --template community-manager`** | **`references/agent-pods.md`** |
+| **"back up my agent"**, "restore/migrate my agent", "agent vault", "snapshot my agent's memory" | **`npx @singularity-layer/agentvault`** (`login`, `backup --all`, `restore`) | **`references/agent-vault.md`** |
 
 Agent Pod quick path:
 ```bash
@@ -698,6 +704,25 @@ revocable (`DELETE /pods/<id>/api-keys/<keyId>`). Full body fields, response sha
 → `chat`).
 
 ---
+
+## Agent Vault — encrypted agent backup & migration
+
+Zero-knowledge encrypted snapshots of an agent's entire state (memory, soul,
+config, skills) for OpenClaw and Hermes — restorable on any machine or pod.
+Encryption happens on the agent's own machine; the platform stores ciphertext
+it cannot read, so **a lost passphrase is unrecoverable**. Free at launch;
+caps 5 GiB/wallet, 2 GiB/snapshot.
+
+```bash
+npm i -g @singularity-layer/agentvault
+agentvault login          # browser wallet approval (or --api-key)
+agentvault backup --all   # encrypt + upload every detected agent
+agentvault restore        # bring an agent back, anywhere
+```
+
+Pods back up one-click from their dashboard **Backups** tab — no install.
+Cross-restoring a snapshot onto a different pod or machine IS migration.
+Full flows, HTTP API, and agent safety rules: `references/agent-vault.md`.
 
 ## Plan Types
 
