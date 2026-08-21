@@ -12,11 +12,28 @@ passphrase is unrecoverable by anyone, including Singularity Layer.** Tell the
 user to write it down before the first backup.
 
 Dashboard: https://cloud.x402compute.cc/network/backups
-Plans: FREE = 1 rolling snapshot (each new backup replaces the previous), 1 GiB.
-VAULT PRO = $3/month from credits — unlimited snapshots, 5 GiB, full history
-(`POST /backups/subscribe`, or dashboard → Agent Vault → Upgrade). A failed
-renewal downgrades behavior only; stored backups are never deleted.
-Per-snapshot cap: 2 GiB.
+Plans (all paid from platform credits):
+  FREE      — 1 GB, 1 rolling snapshot (each new backup replaces the previous).
+  VAULT PRO — 10 GB, the last 10 snapshots OF EACH AGENT. $3/month or $30/year.
+  VAULT MAX — 50 GB, unlimited snapshots, full history. $5/month or $50/year.
+Yearly is two months free. The FREE tier needs no call and no payment — every
+wallet starts there. Subscribe with
+`POST /backups/subscribe {"plan":"pro"|"max","interval":"month"|"year"}`
+(credits), or add `"pay":"x402","network":"base"|"solana"|"robinhood"|"megaeth"`
+to pay directly: the route answers 402 with an x402 challenge when a charge is
+required and credits are short, then activates on the retry carrying
+`X-Payment`. The challenge quotes the FULL plan price; proration means the real
+debit can be lower and the remainder stays as credits. Cancels and scheduled
+downgrades never produce a challenge. The payer must be the authenticated
+wallet, and a replayed `X-Payment` cannot double-charge. The dashboard route is
+Agent Vault → Upgrade.
+
+Upgrades charge now, PRORATED against the unused part of the period already
+paid for, and start a fresh period; downgrades and `"plan":"free"` (cancel)
+take effect at the end of the period already paid for, and never charge. An
+x402 challenge is therefore only ever issued for an action that actually costs
+money. A failed renewal downgrades behavior only; stored
+backups are never deleted. Per-snapshot cap: 2 GiB.
 
 ## CLI (the normal path)
 

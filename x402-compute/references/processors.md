@@ -313,6 +313,34 @@ publisher verifies a fix before resuming.
 the same `X-Payment` / bearer headers. `GET` on that path returns a descriptor; `GET` with
 `Accept: text/event-stream` returns 405 (no SSE — it is stateless).
 
+## Webhooks
+
+One webhook per processor: an HTTP `POST` we send to a publisher-owned URL when the processor sells or
+fails. Routes (owner-signed, same Solana signature as every mutation): `PUT /processors/<slug>/webhook`
+registers/replaces, `GET` returns status, `DELETE` removes, `POST /processors/<slug>/webhook/test`
+sends a `test.ping`.
+
+**Ping-to-activate.** On register we immediately `POST` a signed verification to the URL; it must answer
+`2xx` or the webhook stays registered-but-inactive and delivers nothing. This is the consent check — a
+wallet signature proves the publisher ASKED, not that the target agreed to receive our POSTs. Tell users
+their endpoint must return 2xx to a POST to go live.
+
+**Events:** `sale.completed`, `run.failed`, `run.failed_platform`. Payload carries `run` id/status/
+run_ms/finished_at and the processor id/slug — **never the caller's input or output**. The registration
+response returns a signing secret (`whsec_…`) EXACTLY ONCE; there is no way to read it back.
+
+**Signature (Stripe scheme).** Header `X-SGL-Signature: t=<unix>,v1=<hex>` where
+`v1 = hmac-sha256(secret, "{t}.{rawBody}")`. Verify over the RAW body; the signed `t` lets a receiver
+reject stale replays. Also sent: `X-SGL-Event`, `X-SGL-Delivery` (stable idempotency key — a retry
+reuses it).
+
+**Delivery policy.** 10s timeout per POST; retries with backoff ~1m→24h over 8 attempts; 20 consecutive
+failures auto-disable the webhook (re-register, which re-verifies, to revive); deliveries older than ~26h
+are dropped unsent. URL rules: `https` + port 443 only, real hostname (no IP literals), not our own
+domains, redirects refused. Events are DERIVED from the sales/runs tables by a cron, never emitted from
+the payment path — a webhook problem can only delay a notification, never touch a buyer's payment or a
+run.
+
 ## Billing rules to state accurately
 
 - A run that RAN and failed is **billed** — the compute was spent. It counts in the public failure rate.
