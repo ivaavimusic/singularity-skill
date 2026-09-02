@@ -27,17 +27,25 @@ told when it is done.
 `GET /datasets/config` (no auth) returns everything needed to quote a job:
 
 ```json
-{ "synth": { "rates_per_100_usd": {"fast":0.5,"balanced":0.75,"best":1.5,"grid":0.35},
+{ "synth": { "rates_per_100_usd": {"fast":0.2,"balanced":0.35,"best":1.0,"grid":0.15},
              "max_rows": 2000,
-             "models": [{"id":"deepseek-v3.1","tier":"fast","in_per_m":0.25,"out_per_m":1}] } }
+             "models": [{"id":"deepseek-v3.1","tier":"fast","in_per_m":0.55,"out_per_m":1.65}, …20 models] } }
 ```
 
-**Price = rate x rows / 100.** 500 rows on `fast` = $2.50; 2000 on `best` = $30.
+**Price = rate x rows / 100.** 500 rows on `fast` = $1.00; 2000 on `best` = $20; 200 on the grid = $0.30.
 The per-million-token numbers are the provider's published rates, shown for
 comparison only: the buyer pays the flat per-example price, never per token.
 
 Sizes: 50 to 2000 rows. Seeds: 5 to 20 example conversations (required — they
 teach the generator the format and tone).
+
+**House rules** (`rules`, up to 12 strings of 200 chars): what the assistant must
+NEVER do, e.g. "Never promise a refund", "Never state a delivery time you cannot
+verify". Set them whenever the task involves policy, money, or commitments: a
+standing instruction says what to do, rules say what is forbidden, and without
+them the model invents a policy and applies it differently every row (a real
+200-row support set produced twelve different refund offers). Policy/figure
+consistency is enforced by default even with no rules.
 
 **Two providers.** Managed models (`model_tier` fast/balanced/best, or an exact
 `model_id` from the catalog) are fastest with the best data quality. The

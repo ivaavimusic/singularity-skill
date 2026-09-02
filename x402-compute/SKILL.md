@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.22.0
+version: 1.23.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
