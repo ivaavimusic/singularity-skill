@@ -37,6 +37,57 @@ singularity processors pause | resume    # stop traffic WITHOUT losing the slug
 
 Auth is a Solana wallet signature; the key never leaves the machine.
 
+## Managing a processor with a compute API key (no keypair)
+
+An agent holding a compute API key (`x402c_…`) can manage processors over plain HTTP, without a
+Solana keypair. Send it as `X-API-Key` to `https://processors.x402compute.cc`.
+
+```bash
+curl https://processors.x402compute.cc/processors -H "X-API-Key: $SGL_API_KEY"
+```
+
+The key needs the `processors:read` or `processors:write` scope, ticked when the key is minted
+in the dashboard. **`processors:write` is FULL CONTROL of processors that key's wallet owns**,
+including delete, secrets and token rotation — the same model as a Cloudflare API token. Anyone
+who wants less should mint `processors:read`, which really is read-only.
+
+Reachable with `processors:write`:
+
+| | |
+|---|---|
+| `GET /processors` | your processors (public catalogue when no credential) |
+| `POST /processors` | deploy |
+| `GET`/`PATCH`/`DELETE /processors/{slug}` | detail, update code or manifest, delete |
+| `PUT /processors/{slug}/secrets` | set secret values |
+| `POST /processors/{slug}/rotate-token` | new invoke token |
+| `PUT /processors/{slug}/pause` · `/listing` | pause or resume, list or unlist |
+| `GET /processors/{slug}/runs` · `/runs/{id}` · `/earnings` · `/kv` | logs, one run, revenue, state |
+| `GET`/`PUT`/`DELETE /processors/{slug}/webhook` · `POST …/webhook/test` | webhooks |
+
+**Two things a key cannot do**, and neither is a publisher action: `POST …/suspend` (moderation,
+admin wallets only) and `POST /processors/auth-session` (minting a read session from a bearer).
+Both answer 401 for a key.
+
+**Running a processor is separate.** `POST /processors/{slug}/run` does not accept an API key as
+an ownership claim, because it is the only route with both a money path and an anonymous buyer
+lane. Use the invoke token `deploy` returns (`Authorization: Bearer sk-sglproc_…`), which is
+built for exactly that and reaches unlisted and zero-priced processors.
+
+**Deploying needs a Solana-backed key.** `owner_wallet` becomes the x402 `payTo` and the
+runtime-billing account, so a key minted on an EVM wallet gets `400 solana_wallet_required` on
+`POST /processors`. It can still read and manage processors its wallet already owns.
+
+### Be honest about these three when advising a user
+
+- Compute API keys have **no expiry**. A leaked key works until someone revokes it.
+- There is **no audit log** of what a key did, so a bad one cannot be reconstructed afterwards.
+- Delete is **not recoverable**, unlike redeploying a Cloudflare Worker under the same name: the
+  code is wiped and **the slug is burned permanently**. One leaked `processors:write` key can
+  destroy a name its owner can never reclaim.
+
+Do not describe this as parity with Cloudflare. The scope model matches; the safety net does not
+yet.
+
 ## TypeScript and npm packages
 
 ```bash
