@@ -83,6 +83,8 @@ thing as the account key and cannot manage pods.
 | `GET` `POST` | `/pods/{id}/tasks` | Scheduled tasks |
 | `PATCH` `DELETE` | `/pods/{id}/tasks/{jobId}` | |
 | `GET` `PATCH` | `/pods/{id}/wallet` | Cap field is `per_tx_cap_usd` |
+| `POST` | `/pods/{id}/wallet/send` | Move funds. Needs `pods:wallet:write` |
+| `POST` | `/pods/{id}/wallet/x402/pay` | Pay an x402 endpoint from the pod wallet |
 | `GET` `POST` `DELETE` | `/pods/{id}/connectors` | MCP connectors |
 | `GET` `PATCH` | `/pods/{id}/backups` | |
 | `POST` | `/pods/{id}/chat-ticket` | Ticket for the streaming socket |
@@ -119,7 +121,7 @@ a general key cannot use them:
 
 | Scope | Grants |
 |---|---|
-| `pods:wallet:write` | Send from a pod wallet, raise its cap, set a backup passphrase |
+| `pods:wallet:write` | Send from a pod wallet, pay x402 endpoints with it, raise its caps, set a backup passphrase |
 | `pods:control:write` | Add/remove connectors, and a full-power control socket (pod files, skills, backups) |
 
 Without `pods:control:write` a chat ticket is issued at **`chat`** scope: the socket accepts
@@ -188,6 +190,7 @@ support message and it can be found in our logs.
 | Writes | 60/min per account |
 | **Creates** | **60/hour**, a separate bucket — this one provisions machines and charges |
 | Body | 128 KB |
+| Wallet moves | 30/hour, its own bucket |
 | Webhooks | 10 per account |
 | Event retention | 30 days |
 
