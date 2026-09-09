@@ -88,6 +88,7 @@ thing as the account key and cannot manage pods.
 | `POST` | `/pods/{id}/chat-ticket` | Ticket for the streaming socket |
 | `POST` `GET` | `/pods/{id}/channels/telegram/join-code` | POST mints, GET polls |
 | `POST` | `/pods/{id}/channels/telegram/connect` | Attaches the group that claimed the code |
+| `POST` | `/pods/{id}/channels/{channel}/pair` | Approves someone to DM the agent |
 | `GET` | `/events` | Account event log, paged by `seq` |
 | `POST` `GET` | `/webhooks` · `PATCH` `DELETE` `/webhooks/{id}` | |
 
@@ -99,6 +100,15 @@ minute. `diagnose` and `logs` write their output back through the heartbeat — 
 
 Same for `tasks` and `connectors`: a `202` means the pod has been told, not that it is done.
 `GET /tasks` reports what the pod itself says it has, so it lags the write by a heartbeat.
+
+### Pairing: who may DM the agent
+
+A stranger who finds the bot's username can DM it, and unlike a group that conversation is
+private. So the agent refuses unknown people, shows them a short code, and waits. `POST
+.../channels/{channel}/pair` with that `code` approves them.
+
+The code must come from the agent, so this approves a pairing somebody already started — it
+cannot add a person who never asked.
 
 ---
 
