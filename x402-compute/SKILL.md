@@ -1,8 +1,10 @@
 ---
 name: x402-compute
-version: 1.26.0
+version: 1.27.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
+  "integrate agent pods over an API", "create pods for my customers",
+  "pod webhooks", "pod events",
   "spin up a cloud server", "list compute plans", "browse GPU pricing",
   "deploy AI machine", "one-click GPU running an LLM", "deploy a private LLM endpoint",
   "OpenRouter-ready endpoint", "agent deploy GPU", "spin up my own OpenAI-compatible endpoint",
@@ -206,6 +208,7 @@ reference you need).
 | **"deploy an agent pod"**, "hosted OpenClaw/ClawPod", "always-on AI agent with its own wallet", "free 24h agent trial" | **`agent_pod.py deploy`** (or `catalog`/`list`/`get`) | **`references/agent-pods.md`** |
 | **"call my pod via the OpenAI API"**, "give my pod an OpenAI-compatible endpoint", "get an API key for my agent pod" | **`agent_pod.py create-key` then `agent_pod.py chat`** | **`references/agent-pods.md`** |
 | **"telegram community manager"**, "TGPod", "moderate my telegram group", "bot that answers members and removes scams", "discord community manager" (soon) | **`agent_pod.py templates`** then **`agent_pod.py deploy --template community-manager`** | **`references/agent-pods.md`** |
+| **"integrate agent pods into my product"**, "pods over an API key", "create pods for my customers", "pod webhooks / events", "no wallet, just an API key" | `curl` / `PodsClient` (both SDKs) → `/pods/v1` | **`references/agent-pods-api.md`** |
 | **"back up my agent"**, "restore/migrate my agent", "agent vault", "snapshot my agent's memory" | **`npx @singularity-layer/agentvault`** (`login`, `backup --all`, `restore`) | **`references/agent-vault.md`** |
 | **"buy a training dataset"**, "generate fine-tuning data", "make me a JSONL dataset", "synthetic training data for my model" | `POST /datasets/x402/synth` (402 → pay → poll) or the MCP dataset tools | **`references/datasets.md`** |
 
@@ -768,6 +771,7 @@ For full endpoint details, see:
 - [references/api-reference.md](references/api-reference.md)
 - [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
 - [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
+- [references/agent-pods-api.md](references/agent-pods-api.md) — the **`/pods/v1` API-key surface** for building ON pods rather than clicking them: idempotent create, lifecycle actions, tasks, connectors, wallet, backups, an account **event log** and **signed webhooks**. Use it when the caller holds an `x402c_…` key and no wallet; `agent-pods.md` remains the signature/OWS path.
 - [references/node-operator.md](references/node-operator.md) — run a grid node (provide compute, earn)
 - [references/openwallet-ows.md](references/openwallet-ows.md)
 
