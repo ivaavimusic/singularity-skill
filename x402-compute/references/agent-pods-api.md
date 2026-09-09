@@ -83,6 +83,7 @@ thing as the account key and cannot manage pods.
 | `GET` `POST` | `/pods/{id}/tasks` | Scheduled tasks |
 | `PATCH` `DELETE` | `/pods/{id}/tasks/{jobId}` | |
 | `GET` `PATCH` | `/pods/{id}/wallet` | Cap field is `per_tx_cap_usd` |
+| `GET` `PATCH` | `/pods/{id}/updates` | Who decides when this pod takes our updates |
 | `POST` | `/pods/{id}/wallet/send` | Move funds. Needs `pods:wallet:write` |
 | `POST` | `/pods/{id}/wallet/x402/pay` | Pay an x402 endpoint from the pod wallet |
 | `GET` `POST` `DELETE` | `/pods/{id}/connectors` | MCP connectors |
@@ -111,6 +112,30 @@ private. So the agent refuses unknown people, shows them a short code, and waits
 
 The code must come from the agent, so this approves a pairing somebody already started — it
 cannot add a person who never asked.
+
+### Deciding when a pod takes an update
+
+We ship updates to the pod's scripts, and by default a pod applies ours within six hours,
+restarting its gateway for about forty seconds. That is fine for a pod you run for yourself.
+It is not fine if you run pods for customers, because their agents all blink offline at a
+moment you did not choose.
+
+`PATCH /pods/{id}/updates` with `{"mode":"manual"}` and we keep answering that pod's version
+poll with the version it already has, so it never updates itself. You apply the update when it
+suits you:
+
+```bash
+curl -X POST ".../pods/v1/pods/$POD/actions" -H "X-API-Key: $KEY" \
+  -H 'content-type: application/json' -d '{"action":"update"}'
+```
+
+`GET /pods/{id}/updates` tells you whether one is waiting, and `pod.update_available` fires in
+the event log when a release arrives that a held pod has not taken.
+
+**The hold expires after 30 days.** Security fixes ride these bundles, so a pod pinned
+indefinitely stops being your scheduling choice and becomes an unpatched machine. The response
+always names the date, and `hold_expired: true` says plainly when the window has passed.
+
 
 ---
 
@@ -145,7 +170,7 @@ curl -s "https://compute.x402layer.cc/pods/v1/events?after=41&limit=50" -H "X-AP
 
 Types: `pod.created`, `pod.active`, `pod.destroyed`, `pod.destroy_failed`,
 `pod.action.queued`, `pod.status.changed`, `pod.renewed`, `pod.renewal_failed`,
-`pod.expiring`, `pod.backup.completed`, `pod.backup.failed`.
+`pod.expiring`, `pod.backup.completed`, `pod.backup.failed`, `pod.update_available`.
 
 ### Verifying a delivery
 
