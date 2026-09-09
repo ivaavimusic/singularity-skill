@@ -128,7 +128,8 @@ accepting it.
     "units": [{ "field": "items", "measure": "length", "per_unit_usd": "0.005" }],
     "max_usd": "1.00"
   },
-  "inference": { "provider": "singularity", "model": "qwen-2.5-7b", "api_key_secret": "KEY" }
+  "inference": { "provider": "singularity", "model": "qwen-2.5-7b", "api_key_secret": "KEY" },
+  "prompt": "You are a Solana transaction reviewer. Never say a transaction is safe."
 }
 ```
 
@@ -139,6 +140,7 @@ Rules that bite:
 - Slugs are lowercase, permanent, and never reusable — `pause` exists so nobody burns one to stop traffic.
 - Egress rejects wildcards, `host:port`, URLs, IP literals, and internal names.
 - `sgl-ctx.internal` must NOT be allowlisted. It is reserved for processor state and needs no entry.
+- `prompt` is capped at 8192 characters and is NOT a secret. Editing it is the one manifest change that costs no config-change budget.
 
 ## Secrets: two modes, and the difference is the point
 
@@ -190,6 +192,37 @@ it can download until it expires (default 1h, max 24h), so it must not be logged
 or sent anywhere the file itself would not be sent.
 
 State is deleted when the processor is deleted.
+
+## Standing instructions for a model (the prompt)
+
+A processor that calls a model can keep its instructions in the manifest instead of hard-coding
+them, and edit them later WITHOUT redeploying.
+
+```json
+{ "prompt": "You are a Solana transaction reviewer. Never say a transaction is safe." }
+```
+
+```js
+const instructions = await SGL.prompt.get();   // string, or null when unset
+```
+
+The platform never sends it anywhere. It does not touch your `messages`; you decide whether this
+becomes a system message, part of one, or is ignored.
+
+**Editing it is free.** `PUT /processors/<slug>/prompt` with `{"prompt":"..."}` (or `null` to clear)
+writes the manifest and nothing else. It mints no new isolate and does not count against
+`PROCESSOR_CONFIG_CHANGES_PER_DAY`, unlike changing code or limits. New runs pick it up within about
+15 seconds, the same window as rotating a secret, because it is resolved per request rather than
+baked into the isolate.
+
+Read it ONCE at the top of your handler. Two reads in one run can straddle an edit and disagree.
+
+**It is NOT a secret.** It is stored in the manifest and returned by the owner detail route to
+anyone holding a `processors:read` key. Never put an API key in it; declare a secret instead. It
+does not appear on any public surface: not the catalogue, not the OpenAPI document, not the MCP
+tool, not the public detail projection.
+
+Max 8192 characters. Reading it counts as one subrequest, like every other `SGL.*` call.
 
 ## Console output
 
