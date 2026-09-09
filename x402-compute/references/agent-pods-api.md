@@ -87,6 +87,7 @@ thing as the account key and cannot manage pods.
 | `GET` `PATCH` | `/pods/{id}/backups` | |
 | `POST` | `/pods/{id}/chat-ticket` | Ticket for the streaming socket |
 | `POST` `GET` | `/pods/{id}/channels/telegram/join-code` | POST mints, GET polls |
+| `POST` | `/pods/{id}/channels/telegram/connect` | Attaches the group that claimed the code |
 | `GET` | `/events` | Account event log, paged by `seq` |
 | `POST` `GET` | `/webhooks` · `PATCH` `DELETE` `/webhooks/{id}` | |
 
