@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.27.0
+version: 1.28.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -33,8 +33,9 @@ description: |
   (zero-knowledge encrypted backup, restore & migration for OpenClaw/Hermes agents —
   snapshot an agent's memory and soul, store it encrypted, restore or migrate it to any
   machine or pod). Pay with
-  USDC on Base or Solana, USDm on MegaETH, USDG on Robinhood Chain via x402, optional MPP/Mppx, or
-  pre-loaded USD credits. Includes optional OWS-backed auth and management flows.
+  USDC on Base, Solana or Arc, USDm on MegaETH, USDG on Robinhood Chain via x402, optional MPP/Mppx, or
+  pre-loaded USD credits. Arc note: credit top-ups on Arc have a $5 minimum (Arc gas is paid in
+  USDC). Includes optional OWS-backed auth and management flows.
 homepage: https://docs.x402layer.cc/agentic-access/x402-compute
 metadata:
   clawdbot:
@@ -365,6 +366,7 @@ python {baseDir}/scripts/ows_cli.py key-create --name codex-compute --wallet com
 
 ```bash
 # Top up credits via x402 payment (one-time)
+# network: base | solana | megaeth | robinhood | arc  (Arc minimum $5 — gas is paid in USDC there)
 curl -X POST https://compute.x402layer.cc/compute/credits/topup \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $COMPUTE_API_KEY" \

@@ -40,6 +40,16 @@ USDG_VERSION = "1"
 ROBINHOOD_CHAIN_ID = 4663
 ROBINHOOD_CAIP2 = "eip155:4663"
 
+# Arc (Circle's L1) — native USDC, EIP-3009 transferWithAuthorization. Gas is
+# denominated in USDC on this chain, which is why the platform floors credit
+# top-ups at $5 there. The domain name/version below are verified against the
+# token's on-chain DOMAIN_SEPARATOR (name="USDC", version="2", chainId=5042).
+ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000"
+ARC_USDC_NAME = "USDC"
+ARC_USDC_VERSION = "2"
+ARC_CHAIN_ID = 5042
+ARC_CAIP2 = "eip155:5042"
+
 # network label -> EIP-712 domain + settlement network for the x402 payload.
 EVM_ASSETS = {
     "base": {
@@ -49,6 +59,10 @@ EVM_ASSETS = {
     "robinhood": {
         "address": USDG_ADDRESS, "name": USDG_NAME, "version": USDG_VERSION,
         "chain_id": ROBINHOOD_CHAIN_ID, "network": "robinhood",
+    },
+    "arc": {
+        "address": ARC_USDC_ADDRESS, "name": ARC_USDC_NAME, "version": ARC_USDC_VERSION,
+        "chain_id": ARC_CHAIN_ID, "network": "arc",
     },
 }
 
