@@ -32,6 +32,37 @@ All **instance management** endpoints require authentication. Provision/extend a
   Required header:
   - `X-API-Key`: compute API key (create via `POST /compute/api-keys`)
 
+### Agent Pods
+
+Agent Pod endpoints use the same compute auth (`X-API-Key`, signed session, or wallet
+signature). A pod is a compute order, so the returned `pod.id` is also the instance id for
+extend/destroy.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /pods/catalog` | Public catalog: agents, tiers, channels, templates, pricing |
+| `POST /pods` | Deploy a managed or BYOK Agent Pod |
+| `GET /pods` | List owned pods |
+| `GET /pods/{id}` | Pod details, heartbeat, masked credentials, customization |
+| `PATCH /pods/{id}/settings` | Model/provider/settings/customization update |
+| `POST /pods/{id}/actions` | Queue lifecycle action: restart, redeploy, update, diagnose, logs, cron |
+| `POST /pods/{id}/api-keys` | Mint a pod-scoped `sk-sglpod-int-*` key for the OpenAI adapter |
+| `POST /pods/{id}/v1/chat/completions` | OpenAI-compatible chat with the pod via `Authorization: Bearer sk-sglpod-int-*` |
+
+`POST /pods` and `PATCH /pods/{id}/settings` accept the platform customization layer:
+
+| Field | Max | Notes |
+|-------|-----|-------|
+| `agent_identity` | 8000 chars | Owner/platform identity text rendered into managed `AGENTS.md` and `IDENTITY.md`. |
+| `agent_instructions` | 8000 chars | Owner/platform instructions rendered into managed `AGENTS.md`. |
+| `heartbeat_prompt` | 4000 chars | Custom quiet self-check prompt. Empty or `null` on PATCH restores the default. |
+| `agent_heartbeat_minutes` | server bounded | `0` disables self-checks; otherwise 15-1440 minutes. |
+
+Raw `AGENTS.md` replacement is intentionally not exposed. The managed base keeps wallet
+survival, x402 spend controls, security boundaries, and tool permissions intact; custom text is
+layered into a bounded owner/platform section. Full pod details are in
+`references/agent-pods.md`; the platform API-key surface is in `references/agent-pods-api.md`.
+
 ### GET /compute/plans
 
 List available compute plans with pricing.

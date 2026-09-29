@@ -28,6 +28,10 @@ Usage:
       --telegram <bot_token> --template community-manager \
       --template-config group_id=-1001234567890 --template-config owner_id=987654321 \
       --template-config project_summary="What this community is about"
+  python agent_pod.py deploy --ai-mode managed --tier starter --use-credits \
+      --agent-identity "You are Atlas, Acme's support agent." \
+      --agent-instructions "Answer as Acme support. Be concise." \
+      --heartbeat-prompt "Check open support escalations. Stay silent if clear."
   python agent_pod.py create-key <pod_id> --name my-integration
   python agent_pod.py chat <pod_id> "What's on my calendar today?" --key sk-sglpod-int-...
 """
@@ -110,6 +114,10 @@ def deploy(
     network: Optional[str] = None,
     template: Optional[str] = None,
     template_config: Optional[Dict[str, str]] = None,
+    agent_instructions: Optional[str] = None,
+    agent_identity: Optional[str] = None,
+    heartbeat_prompt: Optional[str] = None,
+    agent_heartbeat_minutes: Optional[int] = None,
 ) -> dict:
     """Deploy a pod via POST /pods (owner / compute auth).
 
@@ -123,6 +131,11 @@ def deploy(
     under "templates", each with the exact setup keys it needs. A template is validated
     BEFORE anything is charged, so a missing key fails as a 400, not as a pod that boots
     and quietly does nothing.
+
+    Platform customization is layered on top of the managed base files:
+    --agent-instructions and --agent-identity render into the pod's managed AGENTS.md /
+    IDENTITY.md, while --heartbeat-prompt changes the self-check prompt. Raw AGENTS.md
+    replacement is intentionally not exposed by the API.
     """
     body: dict = {
         "agent_id": agent_id,
@@ -154,6 +167,14 @@ def deploy(
     if template:
         body["template"] = template
         body["template_config"] = template_config or {}
+    if agent_instructions:
+        body["agent_instructions"] = agent_instructions
+    if agent_identity:
+        body["agent_identity"] = agent_identity
+    if heartbeat_prompt:
+        body["heartbeat_prompt"] = heartbeat_prompt
+    if agent_heartbeat_minutes is not None:
+        body["agent_heartbeat_minutes"] = agent_heartbeat_minutes
     if use_credits:
         body["use_credits"] = True
     if network:
@@ -239,6 +260,14 @@ if __name__ == "__main__":
     p_dep.add_argument("--template-config", action="append", metavar="KEY=VALUE", default=[],
                        help="Template setup value, repeatable. e.g. --template-config group_id=-1001234567890 "
                             "--template-config owner_id=987654321. Required keys are in catalog -> templates[].setup.")
+    p_dep.add_argument("--agent-instructions",
+                       help="Owner/platform instructions layered into managed AGENTS.md (max 8000 chars)")
+    p_dep.add_argument("--agent-identity",
+                       help="Owner/platform identity text layered into AGENTS.md and IDENTITY.md (max 8000 chars)")
+    p_dep.add_argument("--heartbeat-prompt",
+                       help="Self-check heartbeat prompt for the agent's quiet background check (max 4000 chars)")
+    p_dep.add_argument("--agent-heartbeat-minutes", type=int,
+                       help="Self-check cadence in minutes; 0 disables, otherwise 15-1440")
 
     p_key = sub.add_parser("create-key", help="Create an sk-sglpod-int-* adapter integration key")
     p_key.add_argument("pod_id")
@@ -277,6 +306,8 @@ if __name__ == "__main__":
             llm_base_url=args.llm_base_url, llm_api_key=args.llm_api_key, llm_api=args.llm_api,
             use_credits=args.use_credits, network=args.network,
             template=args.template, template_config=tpl_cfg,
+            agent_instructions=args.agent_instructions, agent_identity=args.agent_identity,
+            heartbeat_prompt=args.heartbeat_prompt, agent_heartbeat_minutes=args.agent_heartbeat_minutes,
         )
         if "pod" in result:
             pod = result["pod"]

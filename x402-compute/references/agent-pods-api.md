@@ -44,7 +44,15 @@ POD=$(curl -s -X POST https://compute.x402layer.cc/pods/v1/pods \
   -H "X-API-Key: $SGL_API_KEY" \
   -H "Idempotency-Key: order-4471" \
   -H 'content-type: application/json' \
-  -d '{"tier":"starter","name":"support agent","external_ref":"customer-42"}' | jq -r .pod.id)
+  -d '{
+    "tier": "starter",
+    "name": "support agent",
+    "external_ref": "customer-42",
+    "agent_identity": "You are Atlas, Acme Cloud support.",
+    "agent_instructions": "Answer as Acme support. Be concise and cite the current integration step.",
+    "heartbeat_prompt": "Check open escalations and renew yourself if runway is low. Stay silent if clear.",
+    "agent_heartbeat_minutes": 30
+  }' | jq -r .pod.id)
 
 # Booting takes a few minutes. status goes provisioning -> online.
 curl -s "https://compute.x402layer.cc/pods/v1/pods/$POD" -H "X-API-Key: $SGL_API_KEY" | jq -r .pod.status
@@ -52,6 +60,38 @@ curl -s "https://compute.x402layer.cc/pods/v1/pods/$POD" -H "X-API-Key: $SGL_API
 
 `external_ref` is **your** id. It comes back on every read and filters `GET /pods`, so you can
 find a pod again from your own database without storing ours.
+
+### Customizing the agent
+
+Platforms can customize a pod without taking over the managed runtime files:
+
+| Field | Create | PATCH | Meaning |
+|---|---:|---:|---|
+| `agent_identity` | yes | yes | Owner/platform identity text, max 8000 chars. Rendered into managed `AGENTS.md` and `IDENTITY.md`. |
+| `agent_instructions` | yes | yes | Owner/platform operating instructions, max 8000 chars. Rendered into managed `AGENTS.md`. |
+| `heartbeat_prompt` | yes | yes | Prompt for the quiet self-check heartbeat, max 4000 chars. |
+| `agent_heartbeat_minutes` | yes | yes | Heartbeat cadence: `0` disables; otherwise 15-1440 minutes. |
+
+`AGENTS.md` itself is **not** raw-editable through the API. The platform-managed base keeps
+wallet survival, spend caps, x402 payment safety, and tool boundaries intact. Your text is
+rendered into a bounded owner/platform section; send `""` or `null` on PATCH to clear a
+custom text field and restore the default heartbeat prompt.
+
+`GET /pods/{id}` returns:
+
+```json
+{
+  "pod": {
+    "id": "pod_...",
+    "customization": {
+      "agent_identity": "You are Atlas, Acme Cloud support.",
+      "agent_instructions": "Answer as Acme support.",
+      "heartbeat_prompt": "Check open escalations. Stay silent if clear."
+    },
+    "agent_heartbeat_minutes": 30
+  }
+}
+```
 
 Once `online`, mint a pod key and use any OpenAI client. The model id is **`agent-pod`**:
 
@@ -75,7 +115,7 @@ thing as the account key and cannot manage pods.
 |---|---|---|
 | `POST` | `/pods` | `Idempotency-Key` required. `201`, `status: provisioning` |
 | `GET` | `/pods` | Newest first. `?external_ref=`, `?cursor=`, `?limit=` |
-| `GET` `PATCH` `DELETE` | `/pods/{id}` | PATCH: `name`, `model`, `slug`, `auto_renew` |
+| `GET` `PATCH` `DELETE` | `/pods/{id}` | PATCH: `name`, `model`, `slug`, `auto_renew`, `agent_identity`, `agent_instructions`, `heartbeat_prompt`, `agent_heartbeat_minutes` |
 | `POST` `GET` | `/pods/{id}/keys` | Pod endpoint keys; secret shown once |
 | `DELETE` | `/pods/{id}/keys/{keyId}` | Takes effect immediately |
 | `GET` | `/pods/{id}/usage` | AI spend and token counts |
@@ -228,14 +268,28 @@ Both published clients wrap this surface and are kept feature-equal:
 ```ts
 import { PodsClient } from "@singularity-layer/grid";
 const pods = new PodsClient({ apiKey: process.env.SGL_API_KEY! });
-const pod = await pods.createPod({ tier: "starter", idempotencyKey: `order-${id}` });
+const pod = await pods.createPod({
+  tier: "starter",
+  idempotencyKey: `order-${id}`,
+  agentIdentity: "You are Atlas, Acme Cloud support.",
+  agentInstructions: "Answer as Acme support and cite the integration step.",
+  heartbeatPrompt: "Check open escalations. Stay silent if clear.",
+  agentHeartbeatMinutes: 30,
+});
 await pods.waitForOnline(pod.id);
 ```
 
 ```python
 from singularity_grid import PodsClient
 pods = PodsClient(api_key=os.environ["SGL_API_KEY"])
-pod = pods.create_pod(tier="starter", idempotency_key=f"order-{id}")
+pod = pods.create_pod(
+    tier="starter",
+    idempotency_key=f"order-{id}",
+    agent_identity="You are Atlas, Acme Cloud support.",
+    agent_instructions="Answer as Acme support and cite the integration step.",
+    heartbeat_prompt="Check open escalations. Stay silent if clear.",
+    agent_heartbeat_minutes=30,
+)
 pods.wait_for_online(pod["id"])
 ```
 

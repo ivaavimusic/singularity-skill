@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.30.0
+version: 1.30.1
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -28,7 +28,8 @@ description: |
   SGL Grid (decentralized, confidential, OpenAI-compatible inference, plus Laya/System One typed decisions — consume it),
   Provide Compute (run a TEE node on the grid to serve inference and earn USDC + SGL), and
   Agent Pods (deploy an always-on hosted OpenClaw agent with its own crypto wallet, memory,
-  and preinstalled x402 skills — managed or BYOK, tiers, free 24h trial), and
+  preinstalled x402 skills, and owner/platform customization for identity, instructions,
+  and self-check heartbeat prompts — managed or BYOK, tiers, free 24h trial), and
   Processors (publish your own code as a paid endpoint — buyers pay you directly in USDC via
   x402, you pay only for runtime; every processor is also a connectable MCP server, so agents,
   harnesses and LangGraph nodes can call it with just a URL), and Agent Vault
@@ -92,7 +93,7 @@ Products share one credit balance and one set of wallet/API-key auth:
 - **AI Machines** — one-click deploy of a **GPU already running an LLM**, mode chosen at deploy: `private` (your own **OpenAI-compatible** endpoint — returns URL + API key) or `grid` (serve as a node & earn USDC + SGL, needs 50k SGL staked). Same x402 lifecycle as Machines; add `model_id` + `mode` to provision. **Standard tier (not confidential).** See [AI Machines](#ai-machines--one-click-llm-gpu) below and `references/ai-machines.md`.
 - **SGL Grid** — decentralized, confidential (TEE), **OpenAI-compatible** inference across attested nodes; token streaming + end-to-end encryption. Also serves **Laya/System One** typed decisions at `POST /v1/systemone`. **API base:** `https://grid.x402compute.cc` (see [SGL Grid — Inference](#sgl-grid--inference) below and `references/systemone-laya.md`)
 - **Provide Compute (run a node)** — turn a TEE-capable machine into a grid node: stake $SGL, register, attest, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. Operators can serve GGUF chat models or Laya/System One from the desktop node app. Operators can set a **custom per-token price** within a band (`sgl price set`, suggested × 0.5–× 5); callers compare nodes via `GET /v1/providers`. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
-- **Agent Pods** — deploy an **always-on hosted AI agent** (OpenClaw "ClawPod") on a dedicated CPU machine: it chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. **Curated templates** give a pod a job out of the box — `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
+- **Agent Pods** — deploy an **always-on hosted AI agent** (OpenClaw "ClawPod") on a dedicated CPU machine: it chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Platforms can customize the agent's layered identity/instructions and its quiet self-check heartbeat prompt without replacing the managed `AGENTS.md` safety base. **Curated templates** give a pod a job out of the box — `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
 - **SGL Processors** — deploy ONE function, get a paid HTTP endpoint **and a live MCP server**. Buyers pay the PUBLISHER directly via x402 (no platform cut); the publisher pays only for compute (~$0.0003/run, held then rebated to actual). Runs in isolated V8 sandboxes — **NOT a TEE**. Deny-by-default egress + server-side secret injection. **LIVE via the CLI** (`npm i -g @singularity-layer/cli`); the dashboard UI is still dark. Supports TypeScript + npm via local bundling, captured `console.log` per run, persistent `SGL.kv` / `SGL.files` state with signed download links, per-secret `mode: "env"`, publisher pause/resume, pricing computed from the buyer's input, **buyer payment on Solana, Base or Robinhood Chain** via a per-chain `payout` map, and **signed webhooks** (ping-to-activate, HMAC-signed `sale.completed`/`run.failed` deliveries with retries + auto-disable). See `references/processors.md`.
 - **Datasets** — buy a validated **JSONL fine-tuning dataset** generated from one sentence plus 5-20 example conversations. Priced **per 100 examples** (fast $0.50 / balanced $0.75 / best $1.50 / decentralized grid $0.35), 50-2000 rows. Every row is **checked by a second model** against your house rules and rewritten if it breaks them (managed = frontier judge; **grid checks its own work on-network, so nothing leaves it even to be verified**). Fully agentic over x402: quote (402) → pay → **202 with a claim token in ~1s** → poll or signed webhook → presigned JSONL download. Generation takes minutes, so it NEVER blocks the request. Managed models or the confidential **encrypted grid**. Failed jobs refund. See `references/datasets.md`.
 
@@ -590,7 +591,7 @@ updates. Docs: `https://docs.x402layer.cc/cloud/provide/node-setup`.
 
 ## Agent Pods — always-on hosted agents
 
-Deploy a persistent AI agent ("ClawPod", built on OpenClaw) on a dedicated CPU machine. It stays online 24/7, chats on **Telegram & Discord** (Slack / WhatsApp / Signal are coming soon) **and** from the dashboard, has its own **crypto wallet** (Coinbase CDP — EVM + Solana, keys in a TEE) and **persistent memory**, and ships with the `x402-compute` + `x402-layer` skills preinstalled — wired to your account with capped, revocable credentials — so it can buy confidential compute and pay x402 endpoints itself.
+Deploy a persistent AI agent ("ClawPod", built on OpenClaw) on a dedicated CPU machine. It stays online 24/7, chats on **Telegram & Discord** (Slack / WhatsApp / Signal are coming soon) **and** from the dashboard, has its own **crypto wallet** (Coinbase CDP — EVM + Solana, keys in a TEE) and **persistent memory**, and ships with the `x402-compute` + `x402-layer` skills preinstalled — wired to your account with capped, revocable credentials — so it can buy confidential compute and pay x402 endpoints itself. Platforms building on Agent Pods can layer owner identity, owner instructions, and a custom self-check heartbeat prompt over the managed base.
 
 **API base:** `https://compute.x402layer.cc`
 **Auth:** pod endpoints **always require compute auth** (`X-API-Key`, a signed compute session, or `X-Auth-*` wallet signature) — even when paying with x402, because a pod is owned by your wallet. (This differs from `POST /compute/provision`, which accepts anonymous x402.)
@@ -619,6 +620,10 @@ curl -s -X POST https://compute.x402layer.cc/pods \
     "plan": "<plan_id from /compute/plans>",
     "prepaid_hours": 720,
     "channels": { "telegram": "<bot_token>" },
+    "agent_identity": "You are Atlas, Acme Cloud's support agent.",
+    "agent_instructions": "Answer as Acme support. Be concise and cite the current integration step.",
+    "heartbeat_prompt": "Check open support escalations and renew yourself if runway is low. Stay silent if clear.",
+    "agent_heartbeat_minutes": 30,
     "use_credits": true
   }'
 
@@ -646,7 +651,13 @@ The response includes the new `pod.id` (this **is** the compute order id — use
 - `llm_base_url`, `llm_api_key`, `llm_api` — byok only. `llm_api` ∈ `openai-completions` (default) | `openai-responses` | `anthropic-messages` | `google-generative`.
 - `channels` — `{ telegram?: token, discord?: token }` (validated against the agent's supported channels; unsupported channels are rejected).
 - `memory` — byok only: `{ backend: "raw"|"mem0", api_key?, lcm? }` (managed memory is tier-driven). Applies only when the memory feature is enabled.
+- `agent_identity` — optional owner/platform identity text (max 8000 chars), rendered into the managed `AGENTS.md` customization section and `/opt/pod/workspace/IDENTITY.md`.
+- `agent_instructions` — optional owner/platform instructions (max 8000 chars), rendered into the managed `AGENTS.md` customization section.
+- `heartbeat_prompt` — optional quiet self-check prompt (max 4000 chars), used by the agent heartbeat. It replaces the default survival/check-work prompt only for this pod.
+- `agent_heartbeat_minutes` — optional self-check cadence (`0` disables; otherwise 15-1440 minutes).
 - `use_credits`, `network`, `ssh_public_key`, `region`, `os_id` — passed straight through to the audited provision path.
+
+`AGENTS.md` is not raw-editable over the API. Singularity Layer keeps the platform-managed base so wallet survival, spend caps, x402 safety, and tool boundaries remain intact; your text is appended in a bounded owner/platform section. Use `PATCH /pods/<id>/settings` with empty string or `null` to clear a custom field.
 
 ### Free 24-hour trial — `POST /pods/trial`
 A free Starter/Pro pod with **no upfront payment** (funded by a one-time credit grant; gated behind a live campaign, so it can answer `503` when off or fully claimed). One per wallet + device. The pod is **auto-destroyed at 24h** (never renews) and its managed-AI allowance is capped.
@@ -682,9 +693,13 @@ curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/channels \
   -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
   -d '{"channels":{"discord":"<bot_token>"}}'
 
-# Tune the heartbeat / action-poll interval (10–3600s)
+# Tune the agent self-check heartbeat, identity, and instructions
 curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/settings \
-  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"heartbeat_interval_sec":30}'
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"agent_heartbeat_minutes":30,
+       "agent_identity":"You are Atlas, Acme Cloud support.",
+       "agent_instructions":"Use Acme terminology and escalate billing questions.",
+       "heartbeat_prompt":"Review open escalations and renew yourself if needed. Stay silent if clear."}'
 ```
 Actions apply on the pod worker's next poll (≤ 60s). The `cron` action drives the agent's scheduler: `{"action":"cron","verb":"add|enable|disable|remove|run", ...}` (add takes `kind`/`schedule`/`name`/`message`).
 

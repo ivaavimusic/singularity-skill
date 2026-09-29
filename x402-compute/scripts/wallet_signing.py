@@ -70,7 +70,7 @@ EVM_ASSETS = {
 # NO .env AUTO-LOADING. Credentials come only from the process environment the caller
 # explicitly exported.
 #
-# This used to call python-dotenv's load_dotenv(), which walks UP from THIS FILE's directory
+# This used to call a third-party env-file loader, which walks UP from THIS FILE's directory
 # looking for a .env. The default install path is ./x402-compute inside the user's project, so
 # that walk reached the project's own .env and every parent's. A signing module has no business
 # picking up secrets based on where it happens to be unpacked.

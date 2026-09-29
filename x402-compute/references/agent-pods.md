@@ -5,7 +5,8 @@ a dedicated CPU machine. It chats on **Telegram & Discord** (Slack / WhatsApp / 
 soon) and from the dashboard, has its own **crypto wallet** (Coinbase CDP — EVM + Solana, keys in
 a TEE), **persistent memory**, and ships with the `x402-compute` + `x402-layer` skills preinstalled
 (wired to your account with capped, revocable credentials) so it can buy confidential compute and
-pay x402 endpoints itself.
+pay x402 endpoints itself. Owner/platform customization is supported through structured fields:
+identity, instructions, and the quiet self-check heartbeat prompt.
 
 A pod **is a compute order** — the `pod.id` returned by deploy is the compute order id. Lifecycle
 (extend / destroy) reuses the Machines endpoints with that id as the instance id.
@@ -63,7 +64,16 @@ answers `402 Payment Required`; settle with the `X-Payment` header like any prov
 | `channels` | both | `{ telegram?: token, discord?: token }` — validated against the agent's supported channels; unsupported channels are rejected. |
 | `memory` | byok | `{ backend: "raw"\|"mem0", api_key?, lcm? }` (managed memory is tier-driven; feature-gated). |
 | `template`, `template_config` | both | Curated template — what the pod is FOR. See **Templates** below. |
+| `agent_identity` | both | Owner/platform identity text, max 8000 chars. Rendered into the managed `AGENTS.md` customization section and `/opt/pod/workspace/IDENTITY.md`. |
+| `agent_instructions` | both | Owner/platform instructions, max 8000 chars. Rendered into the managed `AGENTS.md` customization section. |
+| `heartbeat_prompt` | both | Custom prompt for the agent's quiet self-check heartbeat, max 4000 chars. |
+| `agent_heartbeat_minutes` | both | Self-check cadence: `0` disables; otherwise 15-1440 minutes. |
 | `use_credits`, `network`, `ssh_public_key`, `region`, `os_id` | both | Passed straight through to the audited provision path. |
+
+`AGENTS.md` is platform-managed and is not raw-editable through the API. This is intentional:
+wallet survival, x402 spend boundaries, security rules, and tool permissions stay intact while
+your owner/customer text is layered into a bounded customization section. Send an empty string
+or `null` to `PATCH /pods/{id}/settings` to clear one of the custom text fields.
 
 ### Templates — curated pods with a job
 
@@ -111,6 +121,10 @@ curl -s -X POST https://compute.x402layer.cc/pods \
     "plan": "<plan_id>",
     "prepaid_hours": 720,
     "channels": { "telegram": "<bot_token>" },
+    "agent_identity": "You are Atlas, Acme Cloud's support agent.",
+    "agent_instructions": "Answer as Acme support. Be concise and cite the current integration step.",
+    "heartbeat_prompt": "Check open support escalations and renew yourself if runway is low. Stay silent if clear.",
+    "agent_heartbeat_minutes": 30,
     "use_credits": true
   }'
 
@@ -180,12 +194,29 @@ curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/channels \
   -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
   -d '{"channels":{"discord":"<bot_token>"}}'
 
-# Tune knobs: heartbeat/action-poll interval (10–3600s), managed model, auto-renew
+# Tune knobs: agent self-check heartbeat, customization, managed model, auto-renew
 curl -s -X PATCH https://compute.x402layer.cc/pods/<id>/settings \
-  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" -d '{"heartbeat_interval_sec":30}'
+  -H "X-API-Key: $COMPUTE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"agent_heartbeat_minutes":30,
+       "agent_identity":"You are Atlas, Acme Cloud support.",
+       "agent_instructions":"Use Acme terminology and escalate billing questions.",
+       "heartbeat_prompt":"Review open escalations and renew yourself if needed. Stay silent if clear."}'
 ```
 Actions apply on the pod worker's next poll (≤ 60s). The `cron` action drives the agent's scheduler:
 `{"action":"cron","verb":"add|enable|disable|remove|run", ...}` (add takes `kind`/`schedule`/`name`/`message`).
+
+`GET /pods` and `GET /pods/{id}` return:
+
+```json
+{
+  "customization": {
+    "agent_identity": "You are Atlas, Acme Cloud support.",
+    "agent_instructions": "Use Acme terminology and escalate billing questions.",
+    "heartbeat_prompt": "Review open escalations and renew yourself if needed. Stay silent if clear."
+  },
+  "agent_heartbeat_minutes": 30
+}
+```
 
 ### Agent wallet & delegated skill access
 ```bash
