@@ -479,8 +479,10 @@ limits are enforced before payment and again at the runtime boundary. See the co
 stable error table, and Local app path in `references/multimodal-embeddings.md`.
 
 Omitted EmbeddingGemma 2 `input_type` defaults to `query`; send `unspecified` only to opt out
-of retrieval prefixing. The sealed input envelope is retained encrypted until terminal cleanup
-(input 30 minutes, result one hour). Plaintext node failure details are never persisted.
+of retrieval prefixing. Legacy omission retains each model's existing behavior. The sealed input
+envelope becomes purge-eligible 30 minutes after terminal status and the encrypted result after
+one hour. Because cleanup runs hourly, practical upper bounds are about 90 minutes and two hours.
+Plaintext node failure details are never persisted.
 
 ```bash
 python {baseDir}/scripts/grid_embeddings.py embed \

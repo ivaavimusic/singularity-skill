@@ -176,11 +176,15 @@ selected node with negotiated v2/base64 X25519 transport. There is no plaintext 
 The job row temporarily persists that **encrypted envelope**, not plaintext media. Node results
 are also persisted as encrypted envelopes.
 
-After a job becomes terminal, the existing payload-retention migration purges
-`input_payload` after **30 minutes** and `encrypted_result` after **one hour**. Node failure text
-can contain prompts, media, paths, or tracebacks, so it is classified transiently and never
-persisted. Stored `failure_reason` is limited to `embedding_input_invalid`,
-`embedding_context_overflow`, or `embedding_runtime_failed`.
+After a job becomes terminal, `input_payload` becomes eligible for deletion at **30 minutes**
+and `encrypted_result` at **one hour**. The purge runs hourly, so the practical upper bounds are
+about **90 minutes** for input and **two hours** for results.
+
+Node failure text can contain prompts, media, paths, or tracebacks. Node-supplied failure text is
+classified transiently and persisted only as `embedding_input_invalid`,
+`embedding_context_overflow`, or `embedding_runtime_failed`. Orchestrator-owned validation
+paths can store bounded service reasons, but `GET /v1/jobs/{id}` normalizes every EG2 runtime
+failure to the same stable public codes.
 
 ## Public errors
 
@@ -202,6 +206,7 @@ persisted. Stored `failure_reason` is limited to `embedding_input_invalid`,
 | 502 | `inference_error` | Node output failed validation. The Grid may fail over; invalid vectors are not returned or billed. |
 | 503 | `model_not_available` | Release flag, confidential transport, or an exact capable ready node is unavailable. |
 | 503 | `node_not_available` | A claimed node lost the negotiated confidential transport boundary. Not charged; the Grid may fail over. |
+| 503 | `server_error` | The payment service is not configured in this environment. Wait for configuration repair. |
 | 504 | `timeout` | Timed out and not charged. Credits may fail over once. |
 
 The request endpoint returns client-safe messages. `GET /v1/jobs/{id}` can expose only the
