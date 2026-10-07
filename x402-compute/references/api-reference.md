@@ -478,6 +478,10 @@ verified `duration_seconds`. The 24 MiB encoded body, media, batch, and 8,192 pr
 limits are enforced before payment and again at the runtime boundary. See the complete contract,
 stable error table, and Local app path in `references/multimodal-embeddings.md`.
 
+Omitted EmbeddingGemma 2 `input_type` defaults to `query`; send `unspecified` only to opt out
+of retrieval prefixing. The sealed input envelope is retained encrypted until terminal cleanup
+(input 30 minutes, result one hour). Plaintext node failure details are never persisted.
+
 ```bash
 python {baseDir}/scripts/grid_embeddings.py embed \
   --text "A searchable document" --input-type document --dimensions 256

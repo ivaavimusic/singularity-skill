@@ -237,7 +237,12 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--video-seconds", type=float, help="Declared video duration, max 32")
     run.add_argument("--request-json", help="Full request body file for batches or custom ordering")
     run.add_argument("--dimensions", type=int, choices=[768, 512, 256, 128], default=768)
-    run.add_argument("--input-type", choices=["query", "document", "unspecified"], default="unspecified")
+    run.add_argument(
+        "--input-type",
+        choices=["query", "document", "unspecified"],
+        default="query",
+        help="Retrieval prefix (default: query; use unspecified only to opt out)",
+    )
     run.add_argument("--timeout", type=float, default=130)
     run.add_argument("--dry-run", action="store_true", help="Print the exact request without sending")
     return root

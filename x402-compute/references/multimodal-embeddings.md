@@ -42,7 +42,7 @@ Fields:
 | `model` | `embeddinggemma-2` |
 | `input` | String, string array, or 1-16 multimodal items. One vector per top-level item. |
 | `dimensions` | `768` (default), `512`, `256`, or `128` |
-| `input_type` | `query`, `document`, or `unspecified` |
+| `input_type` | Optional: `query` (default when omitted), `document`, or `unspecified`. Use `unspecified` only to opt out of a retrieval prefix. |
 | `encoding_format` | Omit or use `float` |
 | `tier` | Optional `standard` or `confidential` |
 
@@ -94,6 +94,10 @@ A multimodal item has 1-16 ordered `content` parts:
 Media is inline only. The Grid never fetches media URLs. `sha256` is the lowercase hash of the
 decoded bytes, and `data` is canonical base64 for those exact bytes. Audio and video require
 `duration_seconds`; the runtime verifies real decoded duration and rejects understatement.
+
+Omitting `input_type` is exactly equivalent to `"input_type":"query"` for EmbeddingGemma 2.
+The Grid seals that explicit value with the ordered input, so admission, the quote, and runtime
+prefixing cannot disagree. `unspecified` is an explicit opt-out and is never the default.
 
 Use `grid_embeddings.py` to hash and encode files without loading credentials from a `.env`:
 
@@ -161,26 +165,48 @@ Vectors are returned in top-level input order and are normalized again after 768
 Matryoshka truncation. Billing is input only at the catalog input-token rate. The Grid validates
 vectors and actual processor usage before debiting credits or settling x402.
 
+When an x402 capture succeeds but its durable accounting finalizer still needs recovery, the
+successful response also contains `"billing_pending":true` and a `job_id`. Do not resubmit that
+paid request. The idempotent billing outbox completes the operator/platform split by job id.
+
+## Privacy and retention
+
+The orchestrator seals the complete ordered input and explicit effective `input_type` to the
+selected node with negotiated v2/base64 X25519 transport. There is no plaintext media fallback.
+The job row temporarily persists that **encrypted envelope**, not plaintext media. Node results
+are also persisted as encrypted envelopes.
+
+After a job becomes terminal, the existing payload-retention migration purges
+`input_payload` after **30 minutes** and `encrypted_result` after **one hour**. Node failure text
+can contain prompts, media, paths, or tracebacks, so it is classified transiently and never
+persisted. Stored `failure_reason` is limited to `embedding_input_invalid`,
+`embedding_context_overflow`, or `embedding_runtime_failed`.
+
 ## Public errors
 
 | HTTP | Type/code | Action |
 |---:|---|---|
 | 400 | `invalid_request_error` | Fix JSON, MIME/base64/SHA, duration, batch, encoding, or dimensions. |
-| 400 | `invalid_request_error / embedding_input_invalid` | Decoded media or supported input shape failed runtime validation. Reduce/fix input. Not charged. |
-| 400 | `invalid_request_error / embedding_context_overflow` | Reduce the item. Not charged. |
-| 401 | `invalid_api_key` or `invalid_session` | Replace/reconnect credentials. |
+| 400 | `invalid_request_error / embedding_input_invalid` | Decoded media or supported input shape failed runtime validation. Reduce/fix input. Not charged and no paid failover. |
+| 400 | `invalid_request_error / embedding_context_overflow` | Reduce the item. Not charged and no paid failover. |
+| 401 | `invalid_api_key` | Replace an invalid or revoked API key. |
+| 401 | `invalid_session` | Reconnect the wallet session used with `use_credits:true`. |
 | 403 | `insufficient_scope` | Use a key with `grid:write`. |
 | 402 | `payment_required` | Complete x402 payment or use credits. |
-| 402 | `insufficient_credits` or `pod_cap_reached` | Top up, raise the authorized cap, or reduce the request. |
+| 402 | `insufficient_credits` | Top up credits or reduce the request. |
+| 402 | `pod_cap_reached` | Raise the pod's daily compute cap or wait for reset. |
+| 402 | `payment_error` | Verification or a definitively rejected settlement failed. Follow the message; a definite rejection is not charged. |
 | 404 | `model_not_found` | Correct the model id. If the embeddings feature itself is off, the route returns plain `Not found`. |
 | 413 | `invalid_request_error` | Encoded JSON exceeds 24 MiB. |
+| 500 | `server_error` | Dispatch or billing infrastructure failed. Read the charge/retry statement in the message. |
 | 502 | `inference_error` | Node output failed validation. The Grid may fail over; invalid vectors are not returned or billed. |
 | 503 | `model_not_available` | Release flag, confidential transport, or an exact capable ready node is unavailable. |
+| 503 | `node_not_available` | A claimed node lost the negotiated confidential transport boundary. Not charged; the Grid may fail over. |
 | 504 | `timeout` | Timed out and not charged. Credits may fail over once. |
-| 500 | `server_error` | Dispatch or billing infrastructure failed. Read the message before deciding whether to retry. |
 
-EmbeddingGemma 2 node tracebacks, prompts, paths, and decoder details are never returned or
-persisted. Public failures are reduced to bounded error codes.
+The request endpoint returns client-safe messages. `GET /v1/jobs/{id}` can expose only the
+stable stored failure reason: `embedding_input_invalid`, `embedding_context_overflow`, or
+`embedding_runtime_failed`. Plaintext node reason text is never persisted.
 
 ## Local mode
 

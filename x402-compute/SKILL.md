@@ -554,7 +554,8 @@ curl -X POST https://grid.x402compute.cc/v1/chat/completions \
 Use any **OpenAI SDK** by setting `base_url=https://grid.x402compute.cc/v1` and `api_key=$COMPUTE_API_KEY`. Before a large batch, check `/grid/capacity` and back off / retry if `at_capacity` is true.
 
 **EmbeddingGemma 2:** call `POST /v1/embeddings`, not chat. It preserves string and string-array
-input and adds ordered text/image/audio/video parts. Only use it when
+input and adds ordered text/image/audio/video parts. Omitted `input_type` defaults to `query`;
+`unspecified` is an explicit prefix opt-out. Only use it when
 `GET /v1/models?type=embedding` lists `embeddinggemma-2`; absence means the default-off release
 gate or exact node capability requirement is not satisfied. Build media requests with
 `grid_embeddings.py` and read `references/multimodal-embeddings.md` for dimensions, limits,
