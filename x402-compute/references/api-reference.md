@@ -458,11 +458,29 @@ Decentralized, confidential, **OpenAI-compatible** inference. Auth with your API
 
 ### GET /v1/models
 
-List models currently served by active attested nodes.
+List models currently served by active nodes that satisfy the requested tier and model capability.
 
 ```bash
 curl https://grid.x402compute.cc/v1/models -H "X-API-Key: x402c_..."
+curl "https://grid.x402compute.cc/v1/models?type=embedding" -H "X-API-Key: x402c_..."
 curl "https://grid.x402compute.cc/v1/models?type=systemone" -H "X-API-Key: x402c_..."
+```
+
+### POST /v1/embeddings
+
+OpenAI-compatible input-only embeddings. Existing text models accept a string or string array.
+The release-gated `embeddinggemma-2` model adds ordered text, image, audio, video, and mixed
+items at 768/512/256/128 dimensions. It is callable only while listed by
+`GET /v1/models?type=embedding`.
+
+Multimodal media is inline canonical base64 with its lowercase SHA-256. Audio/video also require
+verified `duration_seconds`. The 24 MiB encoded body, media, batch, and 8,192 processed-token
+limits are enforced before payment and again at the runtime boundary. See the complete contract,
+stable error table, and Local app path in `references/multimodal-embeddings.md`.
+
+```bash
+python {baseDir}/scripts/grid_embeddings.py embed \
+  --text "A searchable document" --input-type document --dimensions 256
 ```
 
 ### POST /v1/chat/completions
