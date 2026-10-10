@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.31.0
+version: 1.32.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -13,6 +13,8 @@ description: |
   "run inference on the grid", "decentralized inference", "OpenAI-compatible API",
   "multimodal embeddings", "EmbeddingGemma 2", "embed image", "embed audio",
   "embed video", "mixed media vectors", "local embeddings",
+  "speech to text", "transcribe audio", "Grid transcription", "Whisper STT",
+  "dictation", "local dictation", "voice engine",
   "confidential / TEE inference", "list grid models", "check grid capacity",
   "Laya", "System One", "Jev-compatible decisions", "typed decision model",
   "private Laya", "serve Laya from the node app",
@@ -27,8 +29,8 @@ description: |
   or manage Singularity Cloud Network compute. Seven jobs: SGL Machines
   (GPU/VPS provisioning across Vultr & DigitalOcean), AI Machines (one-click GPU
   running an LLM — deploy a private OpenAI-compatible endpoint, or join the grid & earn),
-  SGL Grid (decentralized, confidential, OpenAI-compatible inference, multimodal embeddings,
-  plus Laya/System One typed decisions — consume it),
+  SGL Grid (decentralized confidential inference, multimodal embeddings, release-gated
+  client-sealed speech-to-text, plus Laya/System One typed decisions — consume it),
   Provide Compute (run a TEE node on the grid to serve inference and earn USDC + SGL), and
   Agent Pods (deploy an always-on hosted OpenClaw agent with its own crypto wallet, memory,
   preinstalled x402 skills, and owner/platform customization for identity, instructions,
@@ -94,8 +96,8 @@ Products share one credit balance and one set of wallet/API-key auth:
 
 - **SGL Machines** — provision, manage, resize, and extend GPU/VPS instances on Vultr or DigitalOcean. **API base:** `https://compute.x402layer.cc`
 - **AI Machines** — one-click deploy of a **GPU already running an LLM**, mode chosen at deploy: `private` (your own **OpenAI-compatible** endpoint — returns URL + API key) or `grid` (serve as a node & earn USDC + SGL, needs 50k SGL staked). Same x402 lifecycle as Machines; add `model_id` + `mode` to provision. **Standard tier (not confidential).** See [AI Machines](#ai-machines--one-click-llm-gpu) below and `references/ai-machines.md`.
-- **SGL Grid** — decentralized, confidential, **OpenAI-compatible** inference across capability-qualified nodes; token streaming + end-to-end encryption. It serves chat, **EmbeddingGemma 2 multimodal embeddings** at `POST /v1/embeddings`, and **Laya/System One** typed decisions at `POST /v1/systemone`. EmbeddingGemma 2 is release-gated and must appear in `GET /v1/models?type=embedding` before use. **API base:** `https://grid.x402compute.cc` (see [SGL Grid — Inference](#sgl-grid--inference), `references/multimodal-embeddings.md`, and `references/systemone-laya.md`)
-- **Provide Compute (run a node)** — turn a capable machine into a grid node: stake $SGL, register, attest when supported, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. Operators can serve GGUF chat models, Laya/System One, or the release-gated pinned EmbeddingGemma 2 runtime from the desktop node app. Operators can set a **custom per-token price** within a band (`sgl price set`, suggested × 0.5–× 5); callers compare nodes via `GET /v1/providers`. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
+- **SGL Grid** — decentralized confidential inference across capability-qualified nodes. Chat and embeddings use their documented OpenAI-compatible shapes; release-gated speech-to-text uses a two-step client-sealed JSON contract at `/v1/audio/transcriptions`, not multipart. It also serves **EmbeddingGemma 2 multimodal embeddings** and **Laya/System One** typed decisions. Always check the type-filtered model list before use. **API base:** `https://grid.x402compute.cc` (see [SGL Grid — Inference](#sgl-grid--inference), `references/transcription.md`, `references/multimodal-embeddings.md`, and `references/systemone-laya.md`)
+- **Provide Compute (run a node)** — turn a capable machine into a grid node: stake $SGL, register, attest when supported, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. Operators can serve GGUF chat models, Laya/System One, or separately managed EmbeddingGemma 2 and release-gated Whisper transcription workers. Never reuse or modify one runtime for another workload. Operators can set a **custom per-token price** for supported token-billed models; transcription has its own per-audio-second price. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
 - **Agent Pods** — deploy an **always-on hosted AI agent** (OpenClaw "ClawPod") on a dedicated CPU machine: it chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Platforms can customize the agent's layered identity/instructions and its quiet self-check heartbeat prompt without replacing the managed `AGENTS.md` safety base. **Curated templates** give a pod a job out of the box — `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
 - **SGL Processors** — deploy ONE function, get a paid HTTP endpoint **and a live MCP server**. Buyers pay the PUBLISHER directly via x402 (no platform cut); the publisher pays only for compute (~$0.0003/run, held then rebated to actual). Runs in isolated V8 sandboxes — **NOT a TEE**. Deny-by-default egress + server-side secret injection. **LIVE via the CLI** (`npm i -g @singularity-layer/cli`); the dashboard UI is still dark. Supports TypeScript + npm via local bundling, captured `console.log` per run, persistent `SGL.kv` / `SGL.files` state with signed download links, per-secret `mode: "env"`, publisher pause/resume, pricing computed from the buyer's input, **buyer payment on Solana, Base or Robinhood Chain** via a per-chain `payout` map, and **signed webhooks** (ping-to-activate, HMAC-signed `sale.completed`/`run.failed` deliveries with retries + auto-disable). See `references/processors.md`.
 - **Datasets** — buy a validated **JSONL fine-tuning dataset** generated from one sentence plus 5-20 example conversations. Priced **per 100 examples** (fast $0.50 / balanced $0.75 / best $1.50 / decentralized grid $0.35), 50-2000 rows. Every row is **checked by a second model** against your house rules and rewritten if it breaks them (managed = frontier judge; **grid checks its own work on-network, so nothing leaves it even to be verified**). Fully agentic over x402: quote (402) → pay → **202 with a claim token in ~1s** → poll or signed webhook → presigned JSONL download. Generation takes minutes, so it NEVER blocks the request. Managed models or the confidential **encrypted grid**. Failed jobs refund. See `references/datasets.md`.
@@ -199,6 +201,7 @@ Resize is a management action, not a second payment flow. The API preserves rema
 | `ows_cli.py` | Run OpenWallet / OWS wallet, sign-message, and key commands |
 | `agent_pod.py` | Deploy an **Agent Pod** (`POST /pods`), create an `sk-sglpod-int-*` integration key, and call the pod's **OpenAI adapter** (`catalog`/`list`/`get`/`deploy`/`create-key`/`chat`) |
 | `grid_embeddings.py` | Build and call text or ordered multimodal Grid embedding requests; hash/base64 media locally; supports `--dry-run` |
+| `grid_transcription.py` | Validate bounded raw PCM locally, discover release-gated STT availability, or call the official SDK's client-sealed transcription helper |
 | `solana_signing.py` | Internal helper for Solana x402 payment signing |
 
 ---
@@ -216,6 +219,8 @@ reference you need).
 | "run inference on the grid", "confidential/TEE OpenAI-compatible inference" | curl / any OpenAI SDK → `grid.x402compute.cc` | `references/api-reference.md` |
 | **"multimodal embeddings"**, "EmbeddingGemma 2", "embed image/audio/video", "mixed media vectors" | **`grid_embeddings.py`** → `POST /v1/embeddings` | **`references/multimodal-embeddings.md`** |
 | **"local embeddings"**, "embed media on my Mac", "Node app embeddings" | Singularity Node app → Local → Embeddings | **`references/multimodal-embeddings.md`** |
+| **"speech to text"**, "transcribe audio", "Whisper STT", "Grid transcription" | **`grid_transcription.py`** or official SDK → reserve + sealed `POST /v1/audio/transcriptions` | **`references/transcription.md`** |
+| **"local dictation"**, "voice engine", "push to talk" | Singularity Node app → Dictation → Local | **`references/transcription.md`** |
 | "use Laya", "System One", "Jev-compatible typed decisions", "private Laya" | curl / private sealed System One → `grid.x402compute.cc` | `references/systemone-laya.md` |
 | "serve Laya from my node", "node app Laya", "System One node operator" | Singularity Node app v1.7.4+ or `sgl` CLI with a local Laya sidecar | `references/systemone-laya.md` + `references/node-operator.md` |
 | **"deploy an agent pod"**, "hosted OpenClaw/ClawPod", "always-on AI agent with its own wallet", "free 24h agent trial" | **`agent_pod.py deploy`** (or `catalog`/`list`/`get`) | **`references/agent-pods.md`** |
@@ -254,6 +259,16 @@ python {baseDir}/scripts/grid_embeddings.py embed --text "A searchable document"
 python {baseDir}/scripts/grid_embeddings.py embed --text "Product demo" \
   --image ./frame.png --audio ./narration.mp3 --audio-seconds 4.2 \
   --input-type document --dimensions 256
+```
+
+Speech-to-text candidate quick path (default off; availability check does not spend credits):
+```bash
+python {baseDir}/scripts/grid_transcription.py models
+python {baseDir}/scripts/grid_transcription.py transcribe ./utterance.pcm --language auto --dry-run
+
+# After the released Python SDK exposes the sealed helper and discovery lists whisper-1:
+pip install singularity-grid
+python {baseDir}/scripts/grid_transcription.py transcribe ./utterance.pcm
 ```
 
 ---
@@ -517,17 +532,23 @@ deploy example → **`references/ai-machines.md`**.
 
 ## SGL Grid — Inference
 
-Decentralized, confidential inference across attested TEE nodes — **OpenAI-compatible**, so any OpenAI SDK works by pointing `base_url` at the grid. Requests are end-to-end encrypted and can stream token-by-token.
+Decentralized confidential inference across capability-qualified nodes. Chat and embeddings expose
+their documented OpenAI-compatible shapes. Laya/System One and transcription use separate
+contracts. Transcription is client-sealed JSON and non-streaming; do not send it through an OpenAI
+multipart client.
 
 **API base:** `https://grid.x402compute.cc`
 **Auth:** `X-API-Key: x402c_…` (billed to your prepaid credits — same key/credits as Machines) **or** per-request x402 via `X-Payment`.
-**Billing:** pay-per-token in USDC (credits or x402). No subscription.
+**Billing:** chat/embeddings use their documented token/input units; transcription uses exact sample-derived
+audio duration, with the charge rounded up to micro-USDC. Pay in USDC through credits or x402. No subscription.
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET`  | `/v1/models` | List models currently served by active attested nodes |
 | `POST` | `/v1/chat/completions` | OpenAI-compatible chat (set `"stream": true` to stream) |
 | `POST` | `/v1/embeddings` | Text and release-gated EmbeddingGemma 2 text/image/audio/video/mixed vectors |
+| `POST` | `/v1/audio/transcriptions/reserve` | Release-gated metadata-only STT reservation and quote |
+| `POST` | `/v1/audio/transcriptions` | Release-gated client-sealed PCM transcription submit; JSON only |
 | `POST` | `/v1/systemone` | Laya/System One typed decisions (`convaiinnovations/laya`) |
 | `GET`  | `/grid/capacity` | Live capacity: active nodes, TEE types, served models, `at_capacity` |
 
@@ -560,6 +581,13 @@ input and adds ordered text/image/audio/video parts. Omitted `input_type` defaul
 gate or exact node capability requirement is not satisfied. Build media requests with
 `grid_embeddings.py` and read `references/multimodal-embeddings.md` for dimensions, limits,
 stable errors, Local mode, sealed transport, and billing.
+
+**Speech-to-text:** first call the metadata-only reserve endpoint, validate the returned node key
+binding and quote, then seal raw mono 16 kHz signed 16-bit PCM locally and submit the reservation
+token plus encrypted JSON envelope. Use `grid_transcription.py` with the released official SDK and
+read `references/transcription.md`. v1 is one utterance, at most 60 seconds, and is not multipart or
+streaming. It costs $0.0001 per exact audio second ($0.006/minute; $0.0001 minimum), rounded up to micro-USDC: 4.2 seconds costs $0.000420. Do not use
+the route unless `GET /v1/models?type=transcription` lists `whisper-1`; all release gates default off.
 
 **Laya/System One:** call `POST /v1/systemone`, not `/v1/chat/completions`. Use
 `GET /v1/models?type=systemone` to discover it. For end-to-end private Laya, use the reserve +
@@ -837,6 +865,7 @@ Full flows, HTTP API, and agent safety rules: `references/agent-vault.md`.
 For full endpoint details, see:
 - [references/api-reference.md](references/api-reference.md)
 - [references/multimodal-embeddings.md](references/multimodal-embeddings.md) — EmbeddingGemma 2 ordered media contract, Local/Grid usage, limits, dimensions, billing, and exact public errors
+- [references/transcription.md](references/transcription.md) — Local versus Grid STT, client-sealed JSON flow, PCM limits, privacy, pricing, release gates, and helper usage
 - [references/systemone-laya.md](references/systemone-laya.md) — Laya/System One typed decisions, private sealed flow, and node-app serving path
 - [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
 - [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
