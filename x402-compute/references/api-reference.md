@@ -454,7 +454,11 @@ Revoke an API key (signature auth required).
 
 ## SGL Grid — Inference (base: `https://grid.x402compute.cc`)
 
-Decentralized, confidential, **OpenAI-compatible** inference. Auth with your API key as **either** `Authorization: Bearer x402c_…` (standard OpenAI style — works with the OpenAI SDK, Cursor, opencode, LibreChat, etc.) **or** `X-API-Key: x402c_…` (billed to prepaid credits — same key/credits as Machines), or per-request x402 via `X-Payment`. Pay-per-token in USDC.
+Decentralized confidential inference. Chat and embeddings expose their documented
+OpenAI-compatible shapes. System One and transcription use separate contracts. Auth with your API
+key as **either** `Authorization: Bearer x402c_…` or `X-API-Key: x402c_…` (billed to prepaid
+credits — same key/credits as Machines), or per-request x402 via `X-Payment`. Billing units depend
+on the workload; transcription uses exact sample-derived audio duration with the charge rounded up to micro-USDC.
 
 ### GET /v1/models
 
@@ -464,6 +468,7 @@ List models currently served by active nodes that satisfy the requested tier and
 curl https://grid.x402compute.cc/v1/models -H "X-API-Key: x402c_..."
 curl "https://grid.x402compute.cc/v1/models?type=embedding" -H "X-API-Key: x402c_..."
 curl "https://grid.x402compute.cc/v1/models?type=systemone" -H "X-API-Key: x402c_..."
+curl "https://grid.x402compute.cc/v1/models?type=transcription" -H "X-API-Key: x402c_..."
 ```
 
 ### POST /v1/embeddings
@@ -488,6 +493,25 @@ Plaintext node failure details are never persisted.
 python {baseDir}/scripts/grid_embeddings.py embed \
   --text "A searchable document" --input-type document --dimensions 256
 ```
+
+### POST /v1/audio/transcriptions/reserve + /v1/audio/transcriptions
+
+Default-off client-sealed speech-to-text. The reserve call sends metadata/sample count only and
+returns a verified node identity, short-lived token, immutable model pins, and quote. The client
+then seals one raw mono 16 kHz signed 16-bit PCM utterance to that node and submits the reservation
+token plus JSON `enc` object. The Worker never receives plaintext audio. This is not multipart,
+streaming, or OpenAI wire compatibility.
+
+Use the official SDK helper or `scripts/grid_transcription.py`; never hand-roll a plaintext
+fallback. The exact 60-second/1,920,000-byte bound, $0.0001/exact-audio-second price (4.2 seconds = $0.000420; $0.0001 minimum), privacy and
+retention rules, result validation, and release gates are in `references/transcription.md`.
+
+```bash
+python {baseDir}/scripts/grid_transcription.py models
+python {baseDir}/scripts/grid_transcription.py transcribe ./utterance.pcm --dry-run
+```
+
+Do not call either endpoint unless the type-filtered model list returns `whisper-1`.
 
 ### POST /v1/chat/completions
 
