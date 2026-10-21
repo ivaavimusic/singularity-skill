@@ -14,12 +14,13 @@ or upload one with a wallet-signed /training/datasets/presign, then approve it).
 Usage:
   python train_x402.py catalog
   python train_x402.py run --dataset-id <id> --base-model qwen2.5-0.5b-instruct \
-      --gpu-plan-id <id> --hours 1 [--network robinhood] [--yes]
+      --gpu-plan-id <id> --hours 1 [--network base|robinhood|solana] [--yes]
   python train_x402.py status --quote-id <id> --claim-token <token>
   python train_x402.py resume --quote-id <id>   (lost response: resend the SAME payment)
 
-Env: PRIVATE_KEY + WALLET_ADDRESS (an EVM wallet). Training is paid on the networks in
-`catalog.networks` (today: robinhood). Solana is not offered for training yet.
+Env: EVM (base, robinhood): PRIVATE_KEY + WALLET_ADDRESS.
+     Solana: SOLANA_SECRET_KEY (SOLANA_WALLET_ADDRESS optional; derived from the key).
+Training is paid on the networks in `catalog.networks` (base, robinhood, solana).
 COMPUTE_MAX_SPEND_USD caps one payment (default 500). Credentials are read only
 from explicit environment variables; nothing is auto-loaded.
 """
@@ -40,7 +41,7 @@ from wallet_signing import create_compute_auth_headers, load_payment_signer, loa
 
 BASE_URL = os.getenv("COMPUTE_API_BASE", "https://compute.x402layer.cc")
 MAX_SPEND_USD = float(os.getenv("COMPUTE_MAX_SPEND_USD", "500"))
-STABLECOIN = {"base": "USDC", "robinhood": "USDG"}
+STABLECOIN = {"base": "USDC", "robinhood": "USDG", "solana": "USDC"}
 
 
 def catalog() -> dict:
@@ -51,6 +52,9 @@ def catalog() -> dict:
 
 
 def _owner_wallet(network: str) -> str:
+    if network == "solana":
+        from solana_signing import load_solana_wallet_address
+        return load_solana_wallet_address()
     return load_wallet_address(required=True)
 
 
@@ -133,10 +137,32 @@ def _authorization_dead(path: str) -> bool:
         with open(path) as f:
             x_payment = json.load(f)["x_payment"]
         payload = json.loads(base64.b64decode(x_payment + "=" * (-len(x_payment) % 4)))
+        if payload.get("payload", {}).get("transaction"):
+            # Solana: never inferred locally. A stalled cluster can keep a blockhash valid
+            # longer than any wall-clock guess; only the server's answer is final.
+            return False
         valid_before = int(payload["payload"]["authorization"]["validBefore"])
     except Exception:
         return False  # unknown: assume it can still settle
     return time.time() > valid_before + 300
+
+
+def _solana_conclusive_refusal(path: str, out: dict) -> bool:
+    """A Solana 409 that is a decision, not 'still in flight'."""
+    if out.get("code") == "settlement_pending":
+        return False
+    msg = str(out.get("error") or "").lower()
+    if "already being processed" in msg:
+        return False
+    try:
+        with open(path) as f:
+            x_payment = json.load(f)["x_payment"]
+        payload = json.loads(base64.b64decode(x_payment + "=" * (-len(x_payment) % 4)))
+    except Exception:
+        return False
+    if not payload.get("payload", {}).get("transaction"):
+        return False
+    return any(k in msg for k in ("quote has expired", "no longer payable", "inconsistent"))
 
 
 def _send_payment(body: dict, x_payment: str, attempts: int = 3):
@@ -153,7 +179,7 @@ def _send_payment(body: dict, x_payment: str, attempts: int = 3):
 
 
 def run(dataset_id: str, base_model: str, gpu_plan_id: str, hours: int,
-        network: str = "robinhood", recipe: Optional[dict] = None, skip_confirm: bool = False) -> dict:
+        network: str = "base", recipe: Optional[dict] = None, skip_confirm: bool = False) -> dict:
     owner = _owner_wallet(network)
     body = {
         "owner_wallet": owner,
@@ -172,7 +198,8 @@ def run(dataset_id: str, base_model: str, gpu_plan_id: str, hours: int,
     # ("base") whichever EVM network pays.
     body_json = json.dumps(body, separators=(",", ":"))
     try:
-        auth_headers = create_compute_auth_headers("POST", "/training/x402/runs", body_json, chain="base")
+        auth_headers = create_compute_auth_headers("POST", "/training/x402/runs", body_json,
+                                                   chain="solana" if network == "solana" else "base")
     except Exception as exc:
         return {"error": f"Failed to sign the quote request: {exc}"}
     q = requests.post(f"{BASE_URL}/training/x402/runs", data=body_json,
@@ -214,8 +241,14 @@ def run(dataset_id: str, base_model: str, gpu_plan_id: str, hours: int,
             return {"error": "Payment cancelled by user"}
 
     # Step 2: sign EXACTLY the quoted amount and pay with the same body + quote_id.
-    signer = load_payment_signer()
-    x_payment = signer.create_x402_payment_header(pay_to=option["payTo"], amount=amount, network=network)
+    if network == "solana":
+        # A signed transaction whose recent blockhash expires in ~1-2 minutes.
+        from solana_signing import create_solana_xpayment_from_accept, ensure_solana_destination_ready
+        ensure_solana_destination_ready(option)   # same setup the Solana provision/extend flows do
+        x_payment = create_solana_xpayment_from_accept(option)
+    else:
+        signer = load_payment_signer()
+        x_payment = signer.create_x402_payment_header(pay_to=option["payTo"], amount=amount, network=network)
 
     # Save the exact signed payment BEFORE sending it. If the response is lost, the
     # only safe retry is this same payment (the server recognises it and never
@@ -261,6 +294,11 @@ def _handle_paid(paid, quote_id: str, pending: str) -> dict:
         print("wallet-signed POST /training/runs. While it says returning/unknown, wait. Do not pay again.")
         out["payment_accepted"] = True
         return out
+    if paid.status_code == 409 and _solana_conclusive_refusal(pending, out):
+        # The server re-checks for a paid order before any of these refusals, so on Solana
+        # "quote expired / no longer payable / inconsistent" means this payment was not
+        # taken for this order.
+        return {"error": f"payment returned 409", "response": out, "saved_payment": pending, "check": resume}
     if paid.status_code == 409 and not _authorization_dead(pending):
         # A 409 can mean another attempt with this same payment is still in flight
         # (the replay lock). Until the signed authorization has expired it may still
@@ -337,7 +375,7 @@ def main() -> None:
     r.add_argument("--base-model", required=True)
     r.add_argument("--gpu-plan-id", required=True)
     r.add_argument("--hours", type=int, default=1)
-    r.add_argument("--network", default="robinhood", choices=["robinhood"])
+    r.add_argument("--network", default="base", choices=["base", "robinhood", "solana"])
     r.add_argument("--recipe", help="JSON recipe, e.g. '{\"epochs\":2,\"seed\":7}'")
     r.add_argument("--max-spend", type=float)
     r.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
