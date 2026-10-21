@@ -139,6 +139,16 @@ def extend_instance(instance_id: str, hours: int = 720, network: str = "base", s
             print(f"   TX: {data['tx_hash']}")
         return data
 
+    if response.status_code == 202 or (response.status_code == 409 and "settlement_pending" in response.text):
+        # Paid (or the payment outcome is not known yet). Do NOT pay again: the server checks
+        # the chain and either applies the extension or credits the amount back automatically.
+        print("⏳ Payment is being confirmed. Do NOT pay again. Check the instance expiry shortly.")
+        try:
+            body = response.json()
+        except Exception:
+            body = response.text[:2000]
+        return {"pending": True, "response": body}
+
     return {"error": f"Extension failed: {response.status_code}", "response": response.text[:500]}
 
 

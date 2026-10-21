@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.34.1
+version: 1.34.2
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -471,6 +471,10 @@ MegaETH uses an embedded facilitator (no external CDP dependency). The user sign
 Robinhood Chain also uses an embedded facilitator (no third party). The user signs an off-chain EIP-3009 `TransferWithAuthorization` for USDG (`0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`, 6 decimals), and the facilitator submits `transferWithAuthorization()` on Robinhood Chain (chainId 4663) in a single transaction — the contract self-verifies the signature, nonce, and balance on-chain.
 
 For Solana, transient facilitator failures can happen. Retry once or twice if you get a temporary 5xx verify error.
+
+**After you have paid, never pay again for the same request:**
+- `HTTP 202` with `pending: true`: you paid and the machine exists, but its delivery is still being confirmed. The body is the full order (save any one-time keys in it). Poll `instance_details.py <order_id>` (or `agent_pod.py get <pod_id>`). Do not re-provision.
+- `HTTP 409` with code `settlement_pending`: the payment outcome is not known yet and it may have moved. Do not pay again. The server checks the chain and either delivers or credits the amount to your balance automatically.
 
 ## MPP Payment Flow
 

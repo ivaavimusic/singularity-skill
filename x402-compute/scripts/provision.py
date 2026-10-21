@@ -187,6 +187,23 @@ def provision_instance(
 
     print(f"Response: {response.status_code}")
 
+    if response.status_code == 202:
+        # PAID, delivery not yet confirmed. The order exists and the machine is provisioning;
+        # the body is the full order (incl. any one-time keys). Do NOT re-run provisioning:
+        # that would buy a second machine. Poll the order instead.
+        data = response.json()
+        order = data.get("order", {})
+        print("⏳ Payment accepted, delivery is being confirmed. Do NOT provision again.")
+        print(f"   Order ID: {order.get('id', 'N/A')}")
+        if data.get("pending_note"):
+            print(f"   {data['pending_note']}")
+        print(f"   Poll: python instance_details.py {order.get('id', '<id>')}")
+        ai = order.get("ai") or (order.get("metadata") or {}).get("ai") or data.get("ai") or {}
+        if ai.get("api_key"):
+            print(f"   API Key:  {ai['api_key']}  (shown once — store it securely)")
+        data["pending"] = True
+        return data
+
     if response.status_code in (200, 201):
         data = response.json()
         order = data.get("order", {})
@@ -199,7 +216,7 @@ def provision_instance(
         # order metadata: order.metadata.ai = {model_id, api_key, port:8080, endpoint}.
         # For VM providers the endpoint derives from the instance IP + port once the IP
         # lands (http://<ip>:8080/v1); fetch GET /compute/instances/:id to read it back.
-        ai = (order.get("metadata") or {}).get("ai") or data.get("ai") or {}
+        ai = order.get("ai") or (order.get("metadata") or {}).get("ai") or data.get("ai") or {}
         endpoint = ai.get("endpoint")
         api_key = ai.get("api_key")
         port = ai.get("port", 8080)
@@ -215,6 +232,17 @@ def provision_instance(
         if data.get("tx_hash"):
             print(f"   TX:      {data['tx_hash']}")
         return data
+
+    if response.status_code == 409:
+        try:
+            body = response.json()
+        except Exception:
+            body = {}
+        if "settlement_pending" in response.text:
+            # The payment outcome is not known yet. It may have moved. Do NOT pay again: the
+            # server checks the chain and either delivers or credits it back automatically.
+            print("⏳ Payment outcome is being confirmed on-chain. Do NOT pay again.")
+            return {"pending": True, "settlement_pending": True, "response": body or response.text[:2000]}
 
     return {"error": f"Provisioning failed: {response.status_code}", "response": response.text[:2000]}
 
