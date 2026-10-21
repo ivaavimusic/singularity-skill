@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.32.0
+version: 1.33.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -24,6 +24,8 @@ description: |
   "agent pod", "hosted agent with its own wallet", "free agent trial",
   "deploy a processor", "sell my code per call", "monetize an endpoint",
   "publish a paid API", "connect a processor as an MCP tool",
+  "fine-tune a model", "train a model on my data", "Training Lab", "train a model over x402",
+  "start a training run", "fine-tune with a wallet", "training API",
   "back up my agent", "agent backup", "restore my agent", "migrate my agent",
   "agent vault", "snapshot my agent's memory", "move my agent to a new machine",
   or manage Singularity Cloud Network compute. Seven jobs: SGL Machines
@@ -101,6 +103,7 @@ Products share one credit balance and one set of wallet/API-key auth:
 - **Agent Pods** — deploy an **always-on hosted AI agent** (OpenClaw "ClawPod") on a dedicated CPU machine: it chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Platforms can customize the agent's layered identity/instructions and its quiet self-check heartbeat prompt without replacing the managed `AGENTS.md` safety base. **Curated templates** give a pod a job out of the box — `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
 - **SGL Processors** — deploy ONE function, get a paid HTTP endpoint **and a live MCP server**. Buyers pay the PUBLISHER directly via x402 (no platform cut); the publisher pays only for compute (~$0.0003/run, held then rebated to actual). Runs in isolated V8 sandboxes — **NOT a TEE**. Deny-by-default egress + server-side secret injection. **LIVE via the CLI** (`npm i -g @singularity-layer/cli`); the dashboard UI is still dark. Supports TypeScript + npm via local bundling, captured `console.log` per run, persistent `SGL.kv` / `SGL.files` state with signed download links, per-secret `mode: "env"`, publisher pause/resume, pricing computed from the buyer's input, **buyer payment on Solana, Base or Robinhood Chain** via a per-chain `payout` map, and **signed webhooks** (ping-to-activate, HMAC-signed `sale.completed`/`run.failed` deliveries with retries + auto-disable). See `references/processors.md`.
 - **Datasets** — buy a validated **JSONL fine-tuning dataset** generated from one sentence plus 5-20 example conversations. Priced **per 100 examples** (fast $0.50 / balanced $0.75 / best $1.50 / decentralized grid $0.35), 50-2000 rows. Every row is **checked by a second model** against your house rules and rewritten if it breaks them (managed = frontier judge; **grid checks its own work on-network, so nothing leaves it even to be verified**). Fully agentic over x402: quote (402) → pay → **202 with a claim token in ~1s** → poll or signed webhook → presigned JSONL download. Generation takes minutes, so it NEVER blocks the request. Managed models or the confidential **encrypted grid**. Failed jobs refund. See `references/datasets.md`.
+- **Training Lab** — fine-tune a small open model (Qwen 2.5 0.5B / 1.5B) on a dataset you own: pick a GPU block, pay once, get a LoRA adapter + score report back (plus a GGUF when `gguf_available`). **No account needed over x402**: quote (402, exact price) → pay from the wallet that owns the dataset → **202 with a claim token** → poll. Or use an API key with `training:write` and pay from credits. Runs that cannot start come back as credits. See `references/training.md` and `scripts/train_x402.py`.
 
 Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and prepaid credit balance work across Machines and Grid.
 
@@ -202,6 +205,7 @@ Resize is a management action, not a second payment flow. The API preserves rema
 | `agent_pod.py` | Deploy an **Agent Pod** (`POST /pods`), create an `sk-sglpod-int-*` integration key, and call the pod's **OpenAI adapter** (`catalog`/`list`/`get`/`deploy`/`create-key`/`chat`) |
 | `grid_embeddings.py` | Build and call text or ordered multimodal Grid embedding requests; hash/base64 media locally; supports `--dry-run` |
 | `grid_transcription.py` | Validate bounded raw PCM locally, discover release-gated STT availability, or call the official SDK's client-sealed transcription helper |
+| `train_x402.py` | **Training Lab over x402**: `catalog` / `run` (quote → pay the exact amount → 202 + claim token) / `status`. No account; the paying wallet must own an approved dataset |
 | `solana_signing.py` | Internal helper for Solana x402 payment signing |
 
 ---
@@ -228,6 +232,7 @@ reference you need).
 | **"telegram community manager"**, "TGPod", "moderate my telegram group", "bot that answers members and removes scams", "discord community manager" (soon) | **`agent_pod.py templates`** then **`agent_pod.py deploy --template community-manager`** | **`references/agent-pods.md`** |
 | **"integrate agent pods into my product"**, "pods over an API key", "create pods for my customers", "pod webhooks / events", "no wallet, just an API key" | `curl` / `PodsClient` (both SDKs) → `/pods/v1` | **`references/agent-pods-api.md`** |
 | **"back up my agent"**, "restore/migrate my agent", "agent vault", "snapshot my agent's memory" | **`npx @singularity-layer/agentvault`** (`login`, `backup --all`, `restore`) | **`references/agent-vault.md`** |
+| **"fine-tune a model"**, "train a model on my data", "Training Lab", "start a training run", "train over x402" | `scripts/train_x402.py run` (no account, x402) or `POST /training/runs` with an API key (`training:write`) | **`references/training.md`** |
 | **"buy a training dataset"**, "generate fine-tuning data", "make me a JSONL dataset", "synthetic training data for my model" | `POST /datasets/x402/synth` (402 → pay → poll) or the MCP dataset tools | **`references/datasets.md`** |
 
 Agent Pod quick path:
