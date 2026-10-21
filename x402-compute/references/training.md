@@ -26,9 +26,9 @@ Rules an agent must follow:
   compute API, or an API key of that wallet). The paid request needs no auth headers.
 - `owner_wallet` must OWN the dataset, the dataset must be APPROVED, and the SAME wallet
   must pay. Payer != owner is refused before any money moves.
-- Networks: whatever `catalog.networks` lists. Today that is `robinhood` (USDG, EIP-3009). Base is added once its payment recovery is armed; Solana and MegaETH are not offered for training yet. Asking for an unlisted network returns 400 before anything is charged.
+- Networks: whatever `catalog.networks` lists: today `base` (USDC), `solana` (USDC) and `robinhood` (USDG). EVM payers sign EIP-3009; Solana payers sign an SPL transfer transaction (`--network solana`, `SOLANA_SECRET_KEY`). MegaETH is not offered for training. Asking for an unlisted network returns 400 before anything is charged.
 - Sign EXACTLY `maxAmountRequired`. Any other signed value is refused.
-- `validBefore` must be no more than `maxTimeoutSeconds` (3600) from now. Standard x402 signers already do this; a longer authorization is refused before anything is charged.
+- EVM: `validBefore` must be no more than `maxTimeoutSeconds` (3600) from now (Solana transactions expire with their blockhash). Standard x402 signers already do this; a longer authorization is refused before anything is charged.
 - Resend the SAME body plus `quote_id`. A changed body (hours, GPU, recipe) is refused.
 - Keep the `claim_token` (shown once). Status states: `payment_pending` (do NOT pay again),
   `starting`, `run`, `not_paid` (no money moved: request a fresh quote),
@@ -50,7 +50,7 @@ Rules an agent must follow:
 ```bash
 python scripts/train_x402.py catalog
 python scripts/train_x402.py run --dataset-id <id> --base-model qwen2.5-0.5b-instruct \
-  --gpu-plan-id <id> --hours 1 --network robinhood
+  --gpu-plan-id <id> --hours 1 --network base   # or robinhood, solana
 python scripts/train_x402.py status --quote-id <id> --claim-token <token>
 ```
 
