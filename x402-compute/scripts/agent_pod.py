@@ -191,6 +191,13 @@ def deploy(
             "hint": "Deploy with --use-credits, or complete the x402 payment flow via the dashboard.",
             "challenge": resp.json() if resp.headers.get("content-type", "").startswith("application/json") else resp.text[:500],
         }
+    if resp.status_code == 202:
+        # PAID, delivery not yet confirmed: the pod exists and is booting. Do NOT deploy again
+        # (that buys a second pod). Poll it with `get <pod_id>` instead.
+        data = resp.json()
+        data["pending"] = True
+        data.setdefault("hint", "Payment accepted; delivery is being confirmed. Do NOT deploy again. Poll with: agent_pod.py get <pod_id>")
+        return data
     if resp.status_code not in (200, 201):
         return {"error": f"HTTP {resp.status_code}", "response": resp.text[:2000]}
     return resp.json()
@@ -311,7 +318,11 @@ if __name__ == "__main__":
         )
         if "pod" in result:
             pod = result["pod"]
-            print("✅ Pod deployed!")
+            if result.get("pending"):
+                print("⏳ Paid; the pod is booting but delivery is not confirmed yet. Do NOT deploy again.")
+                print(f"   {result.get('pending_note') or result.get('hint') or ''}")
+            else:
+                print("✅ Pod deployed!")
             print(f"   ID:        {pod.get('id')}   (use this for all pod + lifecycle calls)")
             print(f"   Agent:     {pod.get('display_name')} ({pod.get('agent_id')})")
             print(f"   AI mode:   {pod.get('ai_mode')}  tier={pod.get('tier')}  model={pod.get('model')}")
