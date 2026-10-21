@@ -251,10 +251,13 @@ def _build_transaction_base64(accept_option: Dict[str, Any], payer_wallet_addres
             "Run ensure_solana_destination_ready() before creating X-Payment."
         )
 
-    # Keep exactly 3 instructions for x402 exact-scheme Solana verification.
+    # Keep exactly 3 instructions for x402 exact-scheme Solana verification. The facilitator
+    # (PayAI) rejects a 200k compute limit / 1000 microlamport price as
+    # invalid_exact_svm_payload_transaction_instructions_compute_limit_instruction; these are
+    # the values the Cloud app uses, proven on a live Training payment 2026-10-21.
     instructions = [
-        set_compute_unit_limit(200000),
-        set_compute_unit_price(1000),
+        set_compute_unit_limit(40000),
+        set_compute_unit_price(1),
         create_transfer_checked_ix(source_ata, mint, dest_ata, payer_pubkey, amount, 6),
     ]
 
