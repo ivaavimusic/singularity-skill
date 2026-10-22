@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.11.1
+version: 1.12.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -158,7 +158,7 @@ Risk note: this skill can sign messages, submit transactions, and call x402/stud
 |---|---|
 | `pay_base.py` | Pay endpoint on Base, with optional AgentKit benefit flow |
 | `pay_solana.py` | Pay endpoint on Solana |
-| `consume_credits.py` | Consume using credits |
+| `consume_credits.py` | Consume using credits (signs each spend with your wallet; `--chain base` or `--chain solana`) |
 | `consume_product.py` | Purchase digital products/files |
 | `check_credits.py` | Check credit balance |
 | `recharge_credits.py` | Buy endpoint credit packs |
