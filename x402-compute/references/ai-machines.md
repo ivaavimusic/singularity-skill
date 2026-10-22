@@ -127,7 +127,7 @@ curl -X POST <ENDPOINT>/v1/chat/completions \
 ```
 
 Any OpenAI SDK / agent framework / router (Cursor, opencode, LibreChat, LangChain, etc.) works by
-setting `base_url=<ENDPOINT>/v1` and `api_key=<RETURNED_API_KEY>`.
+setting the client's base URL to `<ENDPOINT>/v1` and its API key to the key returned when you provisioned.
 
 > This is your **own dedicated box**, distinct from the shared, confidential SGL Grid at
 > `https://grid.x402compute.cc`. Pick AI Machines when you want a private, dedicated LLM endpoint;
