@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.34.4
+version: 1.34.5
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -519,8 +519,8 @@ python {baseDir}/scripts/provision.py vcg-a100-1c-2g-6gb lax --days 1 --label "m
 python {baseDir}/scripts/provision.py vcg-a100-1c-2g-6gb lax --months 1 --label "grid-node" \
     --model-id llama-3.2-3b --mode grid
 
-# Use a private endpoint (OpenAI-compatible)
-curl -X POST <ENDPOINT>/v1/chat/completions \
+# Use a private endpoint (OpenAI-compatible). <ENDPOINT> = order.ai.endpoint: HTTPS, already ends in /v1
+curl -X POST <ENDPOINT>/chat/completions \
   -H "Content-Type: application/json" -H "Authorization: Bearer <RETURNED_API_KEY>" \
   -d '{"model":"llama-3.2-3b","messages":[{"role":"user","content":"Hello"}]}'
 

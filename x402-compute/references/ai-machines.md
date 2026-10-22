@@ -30,12 +30,14 @@ Deploys a GPU running `llama-server`, which exposes an **OpenAI-compatible** API
 - `POST /v1/chat/completions`
 - `GET /v1/models`
 
-The provision response returns an `ai` object — `{ model_id, api_key, port: 8080, endpoint }` — on the
-order metadata. The private endpoint is OpenAI-compatible at `<endpoint>/v1`; for VM providers the
-endpoint derives from the instance IP + port (`http://<ip>:8080/v1`) once the IP lands (read it back
-via `GET /compute/instances/:id`). Authenticate with `Authorization: Bearer <api_key>`. Point any
-OpenAI-compatible client, agent framework, or router at it (`base_url` = `<endpoint>/v1`,
-`api_key` = the returned key).
+The provision response returns `order.ai = { model_id, api_key, endpoint, ... }`. `endpoint` is the
+machine's **HTTPS** OpenAI-compatible base URL, already ending in `/v1`:
+`https://ai.x402compute.cc/<order-id-or-slug>/v1` (VM providers) or the provider's HTTPS proxy
+(RunPod). Always use it: it is TLS-encrypted and accepts your managed keys. Do not call the box's raw
+IP or port directly; that path is unencrypted and would expose your key and conversations.
+Authenticate with `Authorization: Bearer <api_key>`. Point any OpenAI-compatible client, agent
+framework, or router at it (base URL = `endpoint`, API key = the returned key). Until the machine
+finishes booting the endpoint answers "warming up"; poll `GET /compute/instances/:id`.
 
 > **OpenRouter-ready:** because it speaks the OpenAI schema, it works with any OpenAI-compatible
 > client out of the box. Listing it *as a provider on OpenRouter itself* is a separate OpenRouter
@@ -113,21 +115,21 @@ Grid deploy uses `"deploy_node": { "model_id": "llama-3.2-3b" }` instead (mutual
 
 ## Using a private endpoint
 
-Once `private` mode returns the endpoint + API key, it's a drop-in OpenAI endpoint:
+Once `private` mode returns the endpoint + API key, it is a drop-in OpenAI endpoint (`<ENDPOINT>` = `order.ai.endpoint`, HTTPS, already ends in `/v1`):
 
 ```bash
 # List the model(s) the box serves
-curl <ENDPOINT>/v1/models -H "Authorization: Bearer <RETURNED_API_KEY>"
+curl <ENDPOINT>/models -H "Authorization: Bearer <RETURNED_API_KEY>"
 
 # Chat completion
-curl -X POST <ENDPOINT>/v1/chat/completions \
+curl -X POST <ENDPOINT>/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <RETURNED_API_KEY>" \
   -d '{"model":"llama-3.2-3b","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
 Any OpenAI SDK / agent framework / router (Cursor, opencode, LibreChat, LangChain, etc.) works by
-setting the client's base URL to `<ENDPOINT>/v1` and its API key to the key returned when you provisioned.
+setting the client's base URL to `<ENDPOINT>` and its API key to the key returned when you provisioned.
 
 > This is your **own dedicated box**, distinct from the shared, confidential SGL Grid at
 > `https://grid.x402compute.cc`. Pick AI Machines when you want a private, dedicated LLM endpoint;

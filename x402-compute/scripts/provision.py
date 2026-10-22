@@ -212,21 +212,16 @@ def provision_instance(
         print(f"   IP:      {order.get('ip_address', 'pending')}")
         print(f"   Plan:    {order.get('plan', plan)}")
         print(f"   Expires: {order.get('expires_at', 'N/A')}")
-        # AI Machine (private mode): the endpoint + key live in the ai object on the
-        # order metadata: order.metadata.ai = {model_id, api_key, port:8080, endpoint}.
-        # For VM providers the endpoint derives from the instance IP + port once the IP
-        # lands (http://<ip>:8080/v1); fetch GET /compute/instances/:id to read it back.
+        # AI Machine (private mode): order.ai = {model_id, api_key, endpoint, ...}. `endpoint` is the
+        # HTTPS base URL (already ending in /v1), e.g. https://ai.x402compute.cc/<order-id>/v1. Never
+        # fall back to the raw box IP/port: that path is unencrypted.
         ai = order.get("ai") or (order.get("metadata") or {}).get("ai") or data.get("ai") or {}
         endpoint = ai.get("endpoint")
         api_key = ai.get("api_key")
-        port = ai.get("port", 8080)
-        ip = order.get("ip_address")
-        if not endpoint and ip and ip != "pending":
-            endpoint = f"http://{ip}:{port}/v1"
         if endpoint:
-            print(f"   Endpoint: {endpoint}  (OpenAI-compatible: /v1/chat/completions, /v1/models; auth: Authorization: Bearer <API_KEY>)")
+            print(f"   Endpoint: {endpoint}  (HTTPS, OpenAI-compatible: /chat/completions, /models; auth: Authorization: Bearer <API_KEY>)")
         elif api_key:
-            print(f"   Endpoint: http://<ip>:{port}/v1  (once the instance IP lands — GET /compute/instances/{order.get('id','<id>')})")
+            print(f"   Endpoint: https://ai.x402compute.cc/{order.get('id','<id>')}/v1  (HTTPS; answers 'warming up' until the machine boots)")
         if api_key:
             print(f"   API Key:  {api_key}  (shown once — store it securely)")
         if data.get("tx_hash"):
