@@ -284,10 +284,11 @@ Response is a standard `chat.completion` object with `choices[0].message.content
 
 Point any **OpenAI SDK** at the pod:
 ```python
+import os
 from openai import OpenAI
 client = OpenAI(
     base_url="https://compute.x402layer.cc/pods/<id>/v1",
-    api_key="sk-sglpod-int-…",
+    api_key=os.environ["POD_INTEGRATION_KEY"],  # your sk-sglpod-int-* key
 )
 resp = client.chat.completions.create(
     model="agent-pod",
