@@ -172,8 +172,9 @@ existing x402 payment path (`scripts/wallet_signing.py` / `scripts/solana_signin
 payment scheme.
 
 ```bash
-# 0. One dedicated low-balance wallet for the agent
-export PRIVATE_KEY=<evm-private-key>        # Base (default); same key works for MegaETH + Robinhood (set COMPUTE_AUTH_CHAIN). For Solana set SOLANA_SECRET_KEY + COMPUTE_AUTH_CHAIN=solana
+# 0. One dedicated low-balance wallet for the agent. Set PRIVATE_KEY (EVM: Base by default; the
+#    same key works for MegaETH and Robinhood via COMPUTE_AUTH_CHAIN) or, for Solana,
+#    SOLANA_SECRET_KEY + COMPUTE_AUTH_CHAIN=solana. See SKILL.md "Choose Wallet Mode".
 export WALLET_ADDRESS=<evm-wallet-address>
 
 # 1. Deploy a private LLM endpoint, non-interactive (-y skips the confirm prompt)
