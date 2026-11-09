@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.12.0
+version: 1.13.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -22,6 +22,9 @@ description: |
   "openwallet.sh", or use optional Singularity MCP
   access with a dashboard PAT to manage x402 Singularity Layer operations
   on Base, Ethereum, Polygon, BSC, Monad, or Solana networks.
+  Also use it to spend USDC in the real world via Laso Finance from the agent's
+  own wallet: "get a prepaid card with USDC", "buy a gift card with USDC",
+  "send USDC to Venmo / PayPal / a debit card / a bank account".
 homepage: https://docs.x402layer.cc/agentic-access/singularity-skill
 allowed-tools:
   - Read
@@ -75,6 +78,7 @@ Use this routing first, then load the relevant reference doc.
 | Human-backed agent wallet benefits (World AgentKit) | `pay_base.py`, `discover_marketplace.py` | `references/agentkit-benefits.md` |
 | Support and buyer/seller messaging | `support_auth.py`, `support_threads.py`, `xmtp_support.mjs` | `references/xmtp-support.md` |
 | Use OpenWallet / OWS as an optional wallet backend | `ows_cli.py` | `references/openwallet-ows.md`, `references/pay-per-request.md`, `references/payment-signing.md` |
+| Spend USDC in the real world (prepaid card, gift card, payout to debit card / Venmo / PayPal / bank) via Laso Finance | Agent's own wallet: sign in with `SIGN-IN-WITH-X`, pay with x402 v2 (`PAYMENT-SIGNATURE`). Not `pay_base.py` (v1). Never a Laso API key, never platform credits | `references/laso-spend.md` |
 
 ---
 
@@ -372,6 +376,8 @@ Load only what is needed for the user task:
   optional OpenWallet / OWS wallet backend guidance, install commands, and current scope.
 - `references/payment-signing.md`:
   exact signing domains/types/header payload details.
+- `references/laso-spend.md`:
+  spend USDC in the real world via Laso Finance (prepaid cards, gift cards, payouts) from the agent's own wallet, with the confirm-first and card-secrecy rules.
 
 ---
 
