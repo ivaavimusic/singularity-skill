@@ -35,7 +35,7 @@ description: |
   "back up my agent", "agent backup", "restore my agent", "migrate my agent",
   "agent vault", "snapshot my agent's memory", "move my agent to a new machine",
   or manage Singularity Cloud Network compute. Seven jobs: SGL Machines
-  (GPU/VPS provisioning across Vultr & DigitalOcean), AI Machines (one-click GPU
+  (GPU/VPS provisioning), AI Machines (one-click GPU
   running an LLM — deploy a private OpenAI-compatible endpoint, or join the grid & earn),
   SGL Grid (decentralized confidential inference, multimodal embeddings, release-gated
   client-sealed speech-to-text and text-to-speech, plus Laya/System One typed decisions —
@@ -103,11 +103,11 @@ allowed-tools:
 
 Products share one credit balance and one set of wallet/API-key auth:
 
-- **SGL Machines** — provision, manage, resize, and extend GPU/VPS instances on Vultr or DigitalOcean. **API base:** `https://compute.x402layer.cc`
+- **SGL Machines**: provision, manage, resize, and extend GPU/VPS instances on Singularity Cloud. **API base:** `https://compute.x402layer.cc`
 - **AI Machines** — one-click deploy of a **GPU already running an LLM**, mode chosen at deploy: `private` (your own **OpenAI-compatible** endpoint — returns URL + API key) or `grid` (serve as a node & earn USDC + SGL, needs 50k SGL staked). Same x402 lifecycle as Machines; add `model_id` + `mode` to provision. **Standard tier (not confidential).** See [AI Machines](#ai-machines--one-click-llm-gpu) below and `references/ai-machines.md`.
 - **SGL Grid** — decentralized confidential inference across capability-qualified nodes. Chat and embeddings use their documented OpenAI-compatible shapes; release-gated speech-to-text uses a two-step client-sealed JSON contract at `/v1/audio/transcriptions`, not multipart. It also serves **EmbeddingGemma 2 multimodal embeddings** and **Laya/System One** typed decisions. Always check the type-filtered model list before use. **API base:** `https://grid.x402compute.cc` (see [SGL Grid — Inference](#sgl-grid--inference), `references/transcription.md`, `references/multimodal-embeddings.md`, and `references/systemone-laya.md`)
 - **Provide Compute (run a node)** — turn a capable machine into a grid node: stake $SGL, register, attest when supported, serve a model, earn USDC + SGL. Agentic via the `sgl` CLI. Operators can serve GGUF chat models, Laya/System One, or separately managed EmbeddingGemma 2 and release-gated Whisper transcription workers. Never reuse or modify one runtime for another workload. Operators can set a **custom per-token price** for supported token-billed models; transcription has its own per-audio-second price. See [Provide Compute](#provide-compute-run-a-node) below and `references/node-operator.md`.
-- **Agent Pods** — deploy an **always-on hosted AI agent** on a dedicated CPU machine. Engines: ClawPod (OpenClaw, default), HermPod (Hermes) and Pi pod (a lightweight coding agent). Owners can also run commands, edit files, open ports and clone a pod through the Sandbox API (`references/agent-pods-api.md`). It chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Platforms can customize the agent's layered identity/instructions and its quiet self-check heartbeat prompt without replacing the managed `AGENTS.md` safety base. **Curated templates** give a pod a job out of the box — `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
+- **Agent Pods**: deploy an **always-on hosted AI agent** on a dedicated CPU machine. Engines: ClawPod (OpenClaw, default), HermPod (Hermes) and Pi pod (a lightweight coding agent). Owners can also run commands, edit files, open ports and clone a pod through the Sandbox API (`references/agent-pods-api.md`). It chats on Telegram & Discord (more channels soon) + the dashboard, has its own crypto wallet + memory, and comes with the `x402-compute` + `x402-layer` skills preinstalled. Managed (we run the LLM, tiered) or BYOK; a **free 24h trial** is available. Platforms can customize the agent's layered identity/instructions and its quiet self-check heartbeat prompt without replacing the managed `AGENTS.md` safety base. **Curated templates** give a pod a job out of the box: `community-manager` (**TGPod**) runs a Telegram community; run `agent_pod.py templates` for the live list. Same x402 / API-key + credits lifecycle as Machines. **API base:** `https://compute.x402layer.cc` (see [Agent Pods](#agent-pods--always-on-hosted-agents) below).
 - **SGL Processors** — deploy ONE function, get a paid HTTP endpoint **and a live MCP server**. Buyers pay the PUBLISHER directly via x402 (no platform cut); the publisher pays only for compute (~$0.0003/run, held then rebated to actual). Runs in isolated V8 sandboxes — **NOT a TEE**. Deny-by-default egress + server-side secret injection. **LIVE via the CLI** (`npm i -g @singularity-layer/cli`); the dashboard UI is still dark. Supports TypeScript + npm via local bundling, captured `console.log` per run, persistent `SGL.kv` / `SGL.files` state with signed download links, per-secret `mode: "env"`, publisher pause/resume, pricing computed from the buyer's input, **buyer payment on Solana, Base or Robinhood Chain** via a per-chain `payout` map, and **signed webhooks** (ping-to-activate, HMAC-signed `sale.completed`/`run.failed` deliveries with retries + auto-disable). See `references/processors.md`.
 - **Datasets** — buy a validated **JSONL fine-tuning dataset** generated from one sentence plus 5-20 example conversations. Priced **per 100 examples** (fast $0.50 / balanced $0.75 / best $1.50 / decentralized grid $0.35), 50-2000 rows. Every row is **checked by a second model** against your house rules and rewritten if it breaks them (managed = frontier judge; **grid checks its own work on-network, so nothing leaves it even to be verified**). Fully agentic over x402: quote (402) → pay → **202 with a claim token in ~1s** → poll or signed webhook → presigned JSONL download. Generation takes minutes, so it NEVER blocks the request. Managed models or the confidential **encrypted grid**. Failed jobs refund. See `references/datasets.md`.
 - **Training Lab** — fine-tune a small open model (Qwen 2.5 0.5B / 1.5B) on a dataset you own: pick a GPU block, pay once, get a LoRA adapter + score report back (plus a GGUF when `gguf_available`). **No account needed over x402**: quote (402, exact price) → pay from the wallet that owns the dataset → **202 with a claim token** → poll. Or use an API key with `training:write` and pay from credits. Runs that cannot start come back as credits. See `references/training.md` and `scripts/train_x402.py`.
@@ -125,7 +125,7 @@ Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and p
 This section below (Machines) covers provisioning. Jump to **[SGL Grid — Inference](#sgl-grid--inference)** for the OpenAI-compatible inference API.
 
 **Access Note:** Preferred access is SSH public key. If no SSH key is provided, a one-time password fallback can be fetched once via API.
-**DigitalOcean Note:** DigitalOcean instances require SSH key access because one-time root passwords are not exposed through the DigitalOcean API.
+**`do:` plans:** plans whose id starts with `do:` require SSH key access (no one-time password fallback).
 
 ---
 
@@ -321,9 +321,8 @@ ssh-keygen -t ed25519 -N "" -f ~/.ssh/x402_compute
 # Provision an instance for 1 month (triggers x402 payment)
 python {baseDir}/scripts/provision.py vcg-a100-1c-2g-6gb lax --months 1 --label "my-gpu" --ssh-key-file ~/.ssh/x402_compute.pub
 
-# DigitalOcean plans are prefixed with do:
-# They require SSH key access.
-python {baseDir}/scripts/provision.py do:s-1vcpu-1gb nyc3 --days 1 --label "do-test" --ssh-key-file ~/.ssh/x402_compute.pub
+# Plans whose id starts with do: require SSH key access.
+python {baseDir}/scripts/provision.py do:s-1vcpu-1gb nyc3 --days 1 --label "ssh-only-test" --ssh-key-file ~/.ssh/x402_compute.pub
 
 # Provision a daily instance (cheaper, use-and-throw)
 python {baseDir}/scripts/provision.py vc2-1c-1gb ewr --days 1 --label "test-daily" --ssh-key-file ~/.ssh/x402_compute.pub
@@ -348,7 +347,7 @@ npx mppx https://compute.x402layer.cc/compute/provision \
 # If the response includes management_api_key, store it for later instance management:
 export COMPUTE_API_KEY="x402c_..."
 
-# ⚠️ After provisioning, wait 2-3 minutes for Vultr to complete setup
+# ⚠️ After provisioning, wait 2-3 minutes for the machine to finish setup
 # Then fetch your instance details (IP, status):
 python {baseDir}/scripts/instance_details.py <instance_id>
 ```
@@ -399,7 +398,7 @@ curl -X POST https://compute.x402layer.cc/compute/instances/<instance_id>/resize
   -H "X-API-Key: $COMPUTE_API_KEY" \
   -d '{"plan":"vc2-2c-4gb"}'
 
-# DigitalOcean disk growth is irreversible and must be confirmed explicitly
+# On do: plans, disk growth is irreversible and must be confirmed explicitly
 curl -X POST https://compute.x402layer.cc/compute/instances/<instance_id>/resize \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $COMPUTE_API_KEY" \
@@ -742,14 +741,14 @@ curl -s -X POST https://compute.x402layer.cc/pods \
 The response includes the new `pod.id` (this **is** the compute order id — use it for all pod + lifecycle calls) and, for managed pods, a one-time `managed_ai_key` (the pod's key to our managed LLM proxy — shown once).
 
 **Deploy body fields:**
-- `agent_id` — `"openclaw"` (default), `"hermes"` or `"pi"`.
+- `agent_id`: `"openclaw"` (default), `"hermes"` or `"pi"`.
 - `ai_mode` — `"managed"` | `"byok"`.
 - `tier` — managed only: `"starter"` | `"pro"` | `"max"`.
 - `plan` (+ optional `plan_ram_mb` for a pre-flight RAM check) — the machine; managed tiers enforce a RAM floor (pro/max run a browser on the box).
 - `prepaid_hours` — e.g. `720` = 1 month (min 24).
 - `model` — managed: an override that must be in the chosen tier's model list (else it falls back to the tier default); byok: your model id.
 - `llm_base_url`, `llm_api_key`, `llm_api` — byok only. `llm_api` ∈ `openai-completions` (default) | `openai-responses` | `anthropic-messages` | `google-generative`.
-- `llm_preset` (`openrouter`, `openai`, `venice`, `0g`, `custom`), `llm_fallbacks` (up to 3 ordered backup providers, plus one optional `{preset: "singularity", model}`) and `managed_models` (default on for BYOK ClawPod: also use Singularity Layer models, billed per call from credits) — byok only. See `references/agent-pods.md`.
+- `llm_preset` (`openrouter`, `openai`, `venice`, `0g`, `custom`), `llm_fallbacks` (up to 3 ordered backup providers, plus one optional `{preset: "singularity", model}`) and `managed_models` (default on for BYOK ClawPod: also use Singularity Layer models, billed per call from credits). BYOK only. See `references/agent-pods.md`.
 - `channels` — `{ telegram?: token, discord?: token }` (validated against the agent's supported channels; unsupported channels are rejected).
 - `memory` — byok only: `{ backend: "raw"|"mem0", api_key?, lcm? }` (managed memory is tier-driven). Applies only when the memory feature is enabled.
 - `agent_identity` — optional owner/platform identity text (max 8000 chars), rendered into the managed `AGENTS.md` customization section and `/opt/pod/workspace/IDENTITY.md`.
@@ -875,7 +874,7 @@ agentvault backup --path ~/my-agent --name "My Agent"   # ANY directory (univers
 agentvault restore        # bring an agent back, anywhere
 ```
 
-Vault works for any login (wallet or account login). Pods back up one-click from their dashboard **Backups** tab — no install.
+Vault works for any login (wallet or account login). Pods back up one-click from their dashboard **Backups** tab, no install.
 Cross-restoring a snapshot onto a different pod or machine IS migration.
 Full flows, HTTP API, and agent safety rules: `references/agent-vault.md`.
 
@@ -887,7 +886,7 @@ Full flows, HTTP API, and agent safety rules: `references/agent-vault.md`.
 | VPS | `vc2-*` | Standard cloud compute |
 | High-Perf | `vhp-*` | High-performance dedicated |
 | Dedicated | `vdc-*` | Dedicated bare-metal |
-| DigitalOcean | `do:*` | DigitalOcean Droplets (provider-prefixed size slugs) |
+| Standard (SSH key only) | `do:*` | Standard cloud compute; SSH key required, disk resize irreversible |
 
 ---
 
@@ -918,8 +917,8 @@ For full endpoint details, see:
 - [references/systemone-laya.md](references/systemone-laya.md) — Laya/System One typed decisions, private sealed flow, and node-app serving path
 - [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
 - [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
-- [references/agent-pods-api.md](references/agent-pods-api.md) — the **`/pods/v1` API-key surface** for building ON pods rather than clicking them: idempotent create, lifecycle actions, tasks, connectors, wallet, backups, an account **event log** and **signed webhooks**, plus engines (`clawpod`, `hermpod`, `pipod`), BYOK with fallbacks, and the **Sandbox** (exec, files, ports, clone). Use it when the caller holds an `x402c_…` key and no wallet; `agent-pods.md` remains the signature/OWS path.
-- [references/grid-anthropic-messages.md](references/grid-anthropic-messages.md) — Anthropic-compatible `/v1/messages`, `count_tokens`, Anthropic-shaped `/v1/models`, Claude Code setup
+- [references/agent-pods-api.md](references/agent-pods-api.md): the **`/pods/v1` API-key surface** for building ON pods rather than clicking them: idempotent create, lifecycle actions, tasks, connectors, wallet, backups, an account **event log** and **signed webhooks**, plus engines (`clawpod`, `hermpod`, `pipod`), BYOK with fallbacks, and the **Sandbox** (exec, files, ports, clone). Use it when the caller holds an `x402c_…` key and no wallet; `agent-pods.md` remains the signature/OWS path.
+- [references/grid-anthropic-messages.md](references/grid-anthropic-messages.md): Anthropic-compatible `/v1/messages`, `count_tokens`, Anthropic-shaped `/v1/models`, Claude Code setup
 - [references/node-operator.md](references/node-operator.md) — run a grid node (provide compute, earn)
 - [references/openwallet-ows.md](references/openwallet-ows.md)
 
