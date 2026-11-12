@@ -61,6 +61,55 @@ curl -s "https://compute.x402layer.cc/pods/v1/pods/$POD" -H "X-API-Key: $SGL_API
 `external_ref` is **your** id. It comes back on every read and filters `GET /pods`, so you can
 find a pod again from your own database without storing ours.
 
+### Engines
+
+`engine` picks the agent. Leave it out and you get ClawPod.
+
+| `engine` | Product | What it is |
+|---|---|---|
+| `clawpod` | ClawPod (OpenClaw) | Always-on agent: chat, shell, browser, wallet, Telegram and Discord |
+| `hermpod` | HermPod (Hermes) | Self-improving agent that writes its own skills and keeps long-term memory |
+| `pipod` | Pi pod | Lightweight coding agent, extended with skills and MCP tools |
+
+Any other value is a `400` listing the valid names. Check `available` per engine in
+`GET https://compute.x402layer.cc/pods/catalog` before you build on one.
+
+### Bring your own AI key (BYOK), with fallbacks
+
+Managed pods run Singularity Layer models from your credits. A BYOK pod runs on your key:
+
+```json
+{
+  "engine": "clawpod",
+  "tier": "starter",
+  "ai": {
+    "mode": "byok",
+    "preset": "venice",
+    "api_key": "<YOUR_PROVIDER_KEY>",
+    "name": "Venice",
+    "fallbacks": [
+      { "preset": "openrouter", "api_key": "<YOUR_OPENROUTER_KEY>", "model": "meta-llama/llama-3.3-70b-instruct" },
+      { "preset": "singularity", "model": "z-ai/glm-5.3" }
+    ],
+    "managed_models": true
+  },
+  "model": "<model id at your provider>"
+}
+```
+
+- `preset`: `openrouter`, `openai`, `venice`, `0g` or `custom`. A preset fixes the URL, so you
+  send only the key and model. `custom` needs `base_url` (https) and optionally `api`
+  (`openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative`).
+- `fallbacks`: up to 3 providers tried in order when the primary fails, each
+  `{preset, api_key, model, name?, base_url?, api?}`. One extra entry may be
+  `{preset: "singularity", model}` for a Singularity Layer model.
+- `managed_models`: on by default for a BYOK ClawPod. The pod may also use Singularity Layer
+  models, billed per call from your credits (no included allowance). The list is
+  `byok_managed_models.models` in the catalog; the agent switches with `/model singularity/<id>`.
+- Fallbacks and Singularity Layer models on a BYOK pod are ClawPod only for now.
+- To change providers later, `PATCH /pods/{id}` with `ai.providers` (the whole ordered list,
+  primary first; leave out `api_key` to keep a stored key) and `ai.managed_models`.
+
 ### Customizing the agent
 
 Platforms can customize a pod without taking over the managed runtime files:
@@ -128,6 +177,11 @@ thing as the account key and cannot manage pods.
 | `POST` | `/pods/{id}/wallet/x402/pay` | Pay an x402 endpoint from the pod wallet |
 | `GET` `POST` `DELETE` | `/pods/{id}/connectors` | MCP connectors |
 | `GET` `PATCH` | `/pods/{id}/backups` | |
+| `POST` | `/pods/{id}/exec` | Sandbox: run a shell command. Needs `pods:control:write` |
+| `GET` `PUT` | `/pods/{id}/files` | Sandbox: list, read (`?path=`), write files. Needs `pods:control:write` |
+| `POST` `GET` | `/pods/{id}/ports` | Sandbox: open a public URL to a port, list open ports |
+| `DELETE` | `/pods/{id}/ports/{port}` | Close a port |
+| `POST` `GET` | `/pods/{id}/clone` | POST: new pod restored from this pod's Vault backup. GET (on the new pod): restore status |
 | `POST` | `/pods/{id}/chat-ticket` | Ticket for the streaming socket |
 | `POST` `GET` | `/pods/{id}/channels/telegram/join-code` | POST mints, GET polls |
 | `POST` | `/pods/{id}/channels/telegram/connect` | Attaches the group that claimed the code |
@@ -179,6 +233,96 @@ always names the date, and `hold_expired: true` says plainly when the window has
 
 ---
 
+## Sandbox: exec, files, ports, clone
+
+Run commands and edit files inside a pod you own, publish a port, or clone a pod. Allowed for
+the owner signed in, or an account key with **`pods:control:write`**. A pod's own key can never
+use these routes (an agent must not get a shell on itself through the platform).
+
+The pod must be `online`. For about a minute after it first reports `online` these routes can
+answer `409 conflict` "The pod is offline"; retry.
+
+### Run a command
+
+```bash
+curl -s -X POST "https://compute.x402layer.cc/pods/v1/pods/$POD/exec" \
+  -H "X-API-Key: $SGL_API_KEY" -H 'content-type: application/json' \
+  -d '{"command":"ls -la && python3 --version","timeout_seconds":60}'
+# { "exec": { "exit_code": 0, "timed_out": false, "duration_ms": 41, "stdout": "...",
+#             "stderr": "", "truncated": false, "cwd": "/opt/pod/workspace" } }
+```
+
+- `command`: 1 to 20000 characters, run with bash.
+- `timeout_seconds`: 1 to 300, default 60. A timeout returns `timed_out: true`.
+- Runs as the unprivileged `pod` user in the workspace, with a clean environment. Each of stdout
+  and stderr is capped at 1 MB (`truncated: true` when cut).
+- Rate limit: 120 per minute.
+
+### Files
+
+```bash
+# List the workspace
+curl -s "https://compute.x402layer.cc/pods/v1/pods/$POD/files" -H "X-API-Key: $SGL_API_KEY"
+# -> { "files": [...], "root": "/opt/pod/workspace" }
+
+# Read one file
+curl -s "https://compute.x402layer.cc/pods/v1/pods/$POD/files?path=notes.txt" -H "X-API-Key: $SGL_API_KEY"
+# -> { "file": { "path", "content", "modified", "managed" } }
+
+# Write (create or replace) a text file
+curl -s -X PUT "https://compute.x402layer.cc/pods/v1/pods/$POD/files" \
+  -H "X-API-Key: $SGL_API_KEY" -H 'content-type: application/json' \
+  -d '{"path":"notes.txt","content":"hello"}'
+# -> { "file": { "path", "size", "modified" } }
+```
+
+Rate limit 240 per minute. Bodies are capped at 128 KB like the rest of the API.
+
+### Ports: a public URL for something the pod serves
+
+```bash
+curl -s -X POST "https://compute.x402layer.cc/pods/v1/pods/$POD/ports" \
+  -H "X-API-Key: $SGL_API_KEY" -H 'content-type: application/json' \
+  -d '{"port":8080,"visibility":"private"}'
+# 201 { "port": { "port": 8080, "url": "https://.../pods/port/<id>/", "token": "...",
+#                 "token_header": "x-pod-port-token", "note": "..." }, "rotated": false }
+```
+
+- The URL (and the token for a `private` port) is shown **once**. Opening the same port again
+  rotates them (`200`, `rotated: true`). `public` (default) needs no token; `private` needs the
+  token in the `x-pod-port-token` header.
+- Ports 1024 to 65535 only. Ports the platform uses on the pod (8642, 8787, 18780 to 18799) are
+  refused.
+- At most 5 open ports per pod. `GET /ports` lists them (never the URLs).
+  `DELETE /ports/{port}` closes one.
+- Proxied requests: HTTP only, 5 MB per body, 30 second timeout, 600 requests per minute per pod.
+
+### Clone a pod from its Vault backup
+
+Makes a **new pod**, billed exactly like `POST /pods` (same rails, caps and `Idempotency-Key`
+rule), and restores the source pod's latest completed Agent Vault backup onto it once it is
+online (usually 5 to 10 minutes).
+
+```bash
+curl -s -X POST "https://compute.x402layer.cc/pods/v1/pods/$POD/clone" \
+  -H "X-API-Key: $SGL_API_KEY" -H "Idempotency-Key: clone-4471" -H 'content-type: application/json' \
+  -d '{"passphrase":"<YOUR_VAULT_PASSPHRASE>","name":"support agent 2"}'
+# 201 { "pod": {...}, "clone": { "source_pod_id", "backup_id", "restore": { "status": "pending" } } }
+
+# Then, on the NEW pod id:
+curl -s "https://compute.x402layer.cc/pods/v1/pods/$NEW_POD/clone" -H "X-API-Key: $SGL_API_KEY"
+```
+
+- Body: `passphrase` (your Vault backup passphrase, required), and optional `backup_id`, `name`,
+  `term_hours`, `region`, `max_total_usd`, `channels`, `ai`.
+- Copied: engine, tier, managed model, template, customization, heartbeat, capabilities.
+  Not copied: channel tokens (pass `channels`), a BYOK key (pass `ai` for a BYOK source), the
+  vanity slug, wallet, keys, webhooks, ports.
+- `409` with `details.code = no_backup` means the source has no completed backup yet. Turn
+  backups on with `PATCH /pods/{id}/backups`; backups run automatically.
+
+---
+
 ## Scopes
 
 Ordinary work needs `compute:read` / `compute:write`. Two powers are deliberately separate, so
@@ -187,7 +331,7 @@ a general key cannot use them:
 | Scope | Grants |
 |---|---|
 | `pods:wallet:write` | Send from a pod wallet, pay x402 endpoints with it, raise its caps, set a backup passphrase |
-| `pods:control:write` | Add/remove connectors, and a full-power control socket (pod files, skills, backups) |
+| `pods:control:write` | Add/remove connectors, the Sandbox API (exec, files, ports), and a full-power control socket (pod files, skills, backups) |
 
 Without `pods:control:write` a chat ticket is issued at **`chat`** scope: the socket accepts
 conversation and nothing else. That is the intended default. Ask for the scope only when you
