@@ -35,6 +35,10 @@ x402 challenge is therefore only ever issued for an action that actually costs
 money. A failed renewal downgrades behavior only; stored
 backups are never deleted. Per-snapshot cap: 2 GiB.
 
+Agent Vault works for any Singularity Layer login: a wallet, or an account login without a wallet.
+Every account also gets its own non-custodial wallet on Base and
+Solana, secured by Coinbase, so an account login needs no wallet of its own to use Vault.
+
 ## CLI (the normal path)
 
 ```bash

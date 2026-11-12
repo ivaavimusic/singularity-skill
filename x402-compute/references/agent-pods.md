@@ -12,8 +12,10 @@ A pod **is a compute order** — the `pod.id` returned by deploy is the compute 
 (extend / destroy) reuses the Machines endpoints with that id as the instance id.
 
 - **API base:** `https://compute.x402layer.cc`
-- **Only `openclaw` is deployable today** (`agent_id: "openclaw"`, display name "ClawPod").
-  `hermes` ("HermPod") shows in the catalog marked *coming soon* and is rejected by deploy.
+- **Three engines are deployable:** `agent_id: "openclaw"` (ClawPod, the default), `"hermes"`
+  (HermPod, a self-improving agent that writes its own skills) and `"pi"` (Pi pod, a lightweight
+  coding agent you extend with skills and MCP tools). On the `/pods/v1` API the same engines are
+  named `clawpod`, `hermpod` and `pipod`. Always check `available` in `GET /pods/catalog`.
 
 ## Auth model (important)
 
@@ -54,13 +56,17 @@ answers `402 Payment Required`; settle with the `X-Payment` header like any prov
 ### Deploy body fields
 | Field | Mode | Notes |
 |-------|------|-------|
-| `agent_id` | both | `"openclaw"` (only deployable agent today). |
+| `agent_id` | both | `"openclaw"` (ClawPod, default), `"hermes"` (HermPod) or `"pi"` (Pi pod). See `available` in the catalog. |
 | `ai_mode` | both | `"managed"` \| `"byok"`. |
 | `tier` | managed | `"starter"` \| `"pro"` \| `"max"`. |
 | `plan` | both | Machine plan id (from `GET /compute/plans`). Add optional `plan_ram_mb` for a pre-flight RAM check; managed tiers enforce a RAM floor. |
 | `prepaid_hours` | both | e.g. `720` = 1 month (min 24). |
 | `model` | both | managed: an override that must be in the chosen tier's model list (else falls back to the tier default); byok: your model id. |
 | `llm_base_url`, `llm_api_key`, `llm_api` | byok | `llm_api` ∈ `openai-completions` (default) \| `openai-responses` \| `anthropic-messages` \| `google-generative`. |
+| `llm_preset` | byok | Optional: `openrouter`, `openai`, `venice`, `0g` or `custom`. A preset fixes the base URL, so you only send the key and model. |
+| `llm_name` | byok | Optional display name for the primary provider (max 60 chars). |
+| `llm_fallbacks` | byok (ClawPod) | Up to 3 ordered fallback providers, each `{preset, api_key, model, name?, base_url?, api?}`, plus at most one `{preset: "singularity", model}` entry for a Singularity Layer model. |
+| `managed_models` | byok (ClawPod) | Default on for a BYOK ClawPod. Lets the pod also use Singularity Layer models, billed per call from your credits (no included allowance). Pick one with `/model singularity/<id>`; the list is `byok_managed_models.models` in the catalog. |
 | `channels` | both | `{ telegram?: token, discord?: token }` — validated against the agent's supported channels; unsupported channels are rejected. |
 | `memory` | byok | `{ backend: "raw"\|"mem0", api_key?, lcm? }` (managed memory is tier-driven; feature-gated). |
 | `template`, `template_config` | both | Curated template — what the pod is FOR. See **Templates** below. |

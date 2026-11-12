@@ -526,6 +526,27 @@ curl -X POST https://grid.x402compute.cc/v1/chat/completions \
 
 Errors: `401` invalid/revoked API key · `402` payment required (resend with `X-Payment`) or insufficient credits (top up in Settings → Credits).
 
+### POST /v1/messages (Anthropic-compatible)
+
+The Anthropic Messages API on Grid models, streaming and non-streaming, with tools and (on
+vision models) base64 images. Auth is `x-api-key: x402c_...` or `Authorization: Bearer x402c_...`,
+or x402 via `X-Payment`. Base URL for Anthropic SDKs and Claude Code is
+`https://grid.x402compute.cc` (no `/v1`). Model ids are Grid ids.
+
+```bash
+curl -s https://grid.x402compute.cc/v1/messages \
+  -H "x-api-key: x402c_..." -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+  -d '{"model":"qwen-2.5-32b","max_tokens":512,"messages":[{"role":"user","content":"Hello"}]}'
+```
+
+- `POST /v1/messages/count_tokens` returns `{"input_tokens": N}` (estimate, free, no auth).
+- `GET /v1/models` with an `anthropic-version` header returns the Anthropic model list shape,
+  including `max_input_tokens`. `GET /v1/models/{model_id}` returns one model.
+- Claude Code: `ANTHROPIC_BASE_URL=https://grid.x402compute.cc` plus `ANTHROPIC_API_KEY` set to a
+  compute key. Use a model with well over 13k `max_input_tokens` (today `qwen-2.5-32b`, 32k).
+
+Supported fields, ignored hints, refused features and billing notes: `references/grid-anthropic-messages.md`.
+
 ### POST /v1/systemone
 
 Laya/System One typed decisions. Current model: `convaiinnovations/laya` (aliases: `laya`,
