@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
 """
-consume_product.py - Purchase and optionally download digital products from x402
+consume_product.py - Purchase and optionally download digital products from x402 Singularity Layer.
+
+Products are sold at https://api.x402layer.cc/p/<slug> with a standard x402 402 challenge.
+Pays with USDC on Base or Solana (X402_PREFER_NETWORK picks when both are offered), speaking
+x402 v2 when the 402 carries a PAYMENT-REQUIRED header and v1 otherwise (X402_WIRE=v1 forces v1).
+
+Usage:
+    python consume_product.py <product-slug-or-url> [--download]
+
+Examples:
+    python consume_product.py my-product-slug
+    python consume_product.py https://studio.x402layer.cc/pay/my-product-slug
+    python consume_product.py https://api.x402layer.cc/p/my-product-slug --download
+
+Credentials (explicit environment only, never a .env file):
+    Base:   PRIVATE_KEY + WALLET_ADDRESS, or AWAL mode
+    Solana: SOLANA_SECRET_KEY
 
 Safer defaults:
-- resolves only exact marketplace slug matches
 - accepts only platform-hosted product URLs
-- supports AWAL as well as local private-key signing
 - downloads only from trusted storage hosts
+- after a payment is sent, a timeout / 202 / 5xx is reported as pending: never pay again for it
 """
 
 import argparse
 import json
 import os
-import sys
+import re
 from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import requests
 
+import x402_wire
 from awal_bridge import awal_pay_url
-from wallet_signing import is_awal_mode, load_payment_signer
+from network_selection import pick_payment_option
+from solana_signing import create_solana_payment_header, load_solana_wallet_address
+from wallet_signing import is_awal_mode
 
 API_BASE = "https://api.x402layer.cc"
-STUDIO_BASE = "https://studio.x402layer.cc"
-MARKETPLACE_URL = f"{API_BASE}/marketplace"
 TRUSTED_PRODUCT_HOSTS = {
     "api.x402layer.cc",
     "studio.x402layer.cc",
@@ -33,25 +49,33 @@ TRUSTED_DOWNLOAD_SUFFIXES = (
     ".supabase.in",
     ".supabase.net",
 )
+_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
-def _print_usage() -> None:
-    print("Usage: python consume_product.py <product-slug-or-url> [--download]")
-    print("\nExamples:")
-    print("  python consume_product.py pussio")
-    print("  python consume_product.py https://studio.x402layer.cc/pay/pussio")
-    print("  python consume_product.py pussio --download")
+def _product_url(slug: str) -> str:
+    slug = slug.strip().strip("/")
+    if not _SLUG_RE.match(slug):
+        raise ValueError(f"Not a valid product slug: {slug!r}")
+    return f"{API_BASE}/p/{quote(slug, safe='')}"
 
 
-def _validate_product_url(url: str) -> str:
-    parsed = urlparse(url)
-    if parsed.scheme != "https":
-        raise ValueError("Product URL must use https")
-    if parsed.netloc not in TRUSTED_PRODUCT_HOSTS:
-        raise ValueError("Product URL must be hosted on x402layer.cc")
-    if not parsed.path.startswith("/storage/product/"):
-        raise ValueError("Product URL must use the /storage/product/ path")
-    return url
+def resolve_product_url(product_input: str) -> str:
+    """Slug, Studio pay link, or API product link -> https://api.x402layer.cc/p/<slug>."""
+    if not product_input.startswith("http"):
+        return _product_url(product_input)
+
+    parsed = urlparse(product_input)
+    if parsed.scheme != "https" or parsed.netloc not in TRUSTED_PRODUCT_HOSTS:
+        raise ValueError("Product URL must be an https link on api.x402layer.cc or studio.x402layer.cc")
+    path = parsed.path
+    if parsed.netloc == "studio.x402layer.cc" and path.startswith("/pay/"):
+        return _product_url(path[len("/pay/"):])
+    if parsed.netloc == "api.x402layer.cc" and path.startswith("/p/"):
+        return _product_url(path[len("/p/"):])
+    if parsed.netloc == "api.x402layer.cc" and path.startswith("/storage/product/"):
+        # Legacy link format: the product route accepts the product id too.
+        return _product_url(path[len("/storage/product/"):])
+    raise ValueError("Unknown product URL format (expected /pay/<slug> or /p/<slug>)")
 
 
 def _is_trusted_download_url(url: str) -> bool:
@@ -64,48 +88,6 @@ def _is_trusted_download_url(url: str) -> bool:
     return any(host.endswith(suffix) for suffix in TRUSTED_DOWNLOAD_SUFFIXES)
 
 
-def resolve_product_url(product_input: str) -> str:
-    if product_input.startswith("http"):
-        parsed = urlparse(product_input)
-        if parsed.netloc == "api.x402layer.cc":
-            return _validate_product_url(product_input)
-        if parsed.netloc == "studio.x402layer.cc" and parsed.path.startswith("/pay/"):
-            slug = parsed.path.removeprefix("/pay/").strip("/")
-            return resolve_slug_to_api_url(slug)
-        raise ValueError("Unknown product URL format")
-
-    return resolve_slug_to_api_url(product_input)
-
-
-def resolve_slug_to_api_url(slug: str) -> str:
-    response = requests.get(
-        MARKETPLACE_URL,
-        params={"type": "product", "search": slug},
-        timeout=30,
-        headers={"Accept": "application/json"},
-    )
-    if response.status_code != 200:
-        raise ValueError(f"Failed to query marketplace: {response.status_code}")
-
-    payload = response.json()
-    items = payload.get("items") or payload.get("listings") or []
-    exact_matches = [item for item in items if item.get("slug") == slug]
-    if not exact_matches:
-        raise ValueError(
-            f"Product not found for exact slug '{slug}'. Use the exact marketplace slug."
-        )
-    if len(exact_matches) > 1:
-        raise ValueError(
-            f"Multiple products matched slug '{slug}'. Use the full product URL instead."
-        )
-
-    product_id = exact_matches[0].get("id")
-    if not product_id:
-        raise ValueError(f"Product ID not found for slug '{slug}'")
-
-    return _validate_product_url(f"{API_BASE}/storage/product/{product_id}")
-
-
 def _request_product(url: str, headers: Optional[Dict[str, str]] = None) -> requests.Response:
     merged_headers = {"Accept": "application/json"}
     if headers:
@@ -113,16 +95,20 @@ def _request_product(url: str, headers: Optional[Dict[str, str]] = None) -> requ
     return requests.get(url, headers=merged_headers, timeout=45)
 
 
+def _download_url(result: Dict[str, Any]) -> Optional[str]:
+    return result.get("download_url") or result.get("downloadUrl")
+
+
 def _download_file(result: Dict[str, Any]) -> None:
-    download_url = result.get("downloadUrl")
+    download_url = _download_url(result)
     if not download_url:
         print("No download URL returned")
         return
     if not _is_trusted_download_url(download_url):
         raise ValueError("Refusing to download from a non-trusted host")
 
-    raw_filename = result.get("fileName", "downloaded_product")
-    filename = os.path.basename(raw_filename)
+    raw_filename = result.get("file_name") or result.get("fileName") or "downloaded_product"
+    filename = os.path.basename(str(raw_filename))
     if not filename or filename in {".", ".."}:
         filename = "downloaded_product"
 
@@ -136,39 +122,49 @@ def _download_file(result: Dict[str, Any]) -> None:
     print(f"Downloaded: {filename} ({len(file_response.content)} bytes)")
 
 
-def _pay_with_private_key(api_url: str) -> Dict[str, Any]:
-    signer = load_payment_signer()
-
+def _pay_with_local_keys(api_url: str) -> Dict[str, Any]:
     response = _request_product(api_url)
     if response.status_code == 200:
         return response.json()
     if response.status_code != 402:
-        raise ValueError(f"Unexpected response: {response.status_code} - {response.text}")
+        raise ValueError(f"Unexpected response: {response.status_code} - {response.text[:500]}")
 
-    payment_info = response.json().get("payment", {})
-    recipient = payment_info.get("recipient")
-    price = payment_info.get("amount")
-    currency = payment_info.get("currency", "USDC")
-    network = payment_info.get("network", "base")
+    # v2 PAYMENT-REQUIRED header first, v1 JSON body otherwise (x402_wire).
+    challenge = x402_wire.read_challenge(response)
+    network, option, signer = pick_payment_option(challenge, context="product purchase")
+    amount = int(option["maxAmountRequired"])
 
     print("Payment required:")
-    print(f"  Recipient: {recipient}")
-    print(f"  Amount: {price} {currency}")
-    print(f"  Network: {network}")
+    print(f"  Network:   {network}")
+    print(f"  Amount:    {amount} atomic units ({amount / 1_000_000:.6f} USDC)")
+    print(f"  Recipient: {option.get('payTo')}")
 
-    if network != "base":
-        raise ValueError(f"This script only supports Base network. Product requires: {network}")
-    if currency not in {"USDC", "USD"}:
-        raise ValueError(f"This script only supports USDC. Product requires: {currency}")
+    if network == "base":
+        if signer is None:
+            raise ValueError("Internal error: missing Base signer")
+        header_name, payment = signer.create_payment_header(challenge, option)
+        wallet = signer.wallet
+    else:
+        header_name, payment = create_solana_payment_header(challenge, option)
+        wallet = load_solana_wallet_address() or ""
 
-    amount = int(float(price) * 1e6)
-    payment_payload = signer.create_x402_payment_payload(pay_to=recipient, amount=amount)
-
-    print("\nSubmitting payment and requesting download...")
-    paid = _request_product(api_url, headers={"X-Payment": json.dumps(payment_payload)})
+    print("\nSubmitting payment and requesting the product...")
+    headers = {header_name: payment}
+    if wallet:
+        headers["x-wallet-address"] = wallet
+    # From here the payment is SENT. A timeout, 202 or 5xx is pending, never a reason to pay again.
+    try:
+        paid = _request_product(api_url, headers=headers)
+    except requests.RequestException as exc:
+        return x402_wire.pending_result(None, exc)
+    if x402_wire.is_ambiguous_status(paid.status_code):
+        return x402_wire.pending_result(paid.status_code, paid.text)
     if paid.status_code != 200:
-        raise ValueError(f"Payment failed: {paid.status_code} - {paid.text}")
+        raise ValueError(f"Payment failed: {paid.status_code} - {paid.text[:500]}")
 
+    settlement = x402_wire.read_payment_response(paid)
+    if settlement and settlement.get("transaction"):
+        print(f"Settled: {settlement.get('transaction')} on {settlement.get('network')}")
     return paid.json()
 
 
@@ -183,11 +179,15 @@ def consume_product(product_input: str, download_file: bool = False) -> Dict[str
         if result.get("error"):
             raise ValueError(result["error"])
     else:
-        result = _pay_with_private_key(api_url)
+        result = _pay_with_local_keys(api_url)
+
+    if result.get("pending"):
+        print("\nPayment sent but not confirmed yet. Do NOT pay again.")
+        return result
 
     print("\nProduct purchased successfully")
-    print(f"Download URL: {result.get('downloadUrl', 'N/A')}")
-    print(f"File Name: {result.get('fileName', 'N/A')}")
+    print(f"Download URL: {_download_url(result) or 'N/A'}")
+    print(f"File Name: {result.get('file_name') or result.get('fileName') or 'N/A'}")
 
     if download_file:
         _download_file(result)
@@ -197,7 +197,7 @@ def consume_product(product_input: str, download_file: bool = False) -> Dict[str
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Purchase a product from x402 Singularity Layer")
-    parser.add_argument("product", help="Exact product slug or trusted x402 product URL")
+    parser.add_argument("product", help="Product slug, Studio pay link, or api.x402layer.cc/p/<slug> link")
     parser.add_argument("--download", action="store_true", help="Download the returned file after purchase")
     args = parser.parse_args()
 
@@ -205,7 +205,7 @@ def main() -> int:
         result = consume_product(args.product, download_file=args.download)
         print("\nResult:")
         print(json.dumps(result, indent=2))
-        return 0
+        return 2 if result.get("pending") else 0
     except Exception as exc:
         print(f"\nError: {exc}")
         return 1

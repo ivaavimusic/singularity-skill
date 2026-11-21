@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.38.0
+version: 1.39.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -121,7 +121,7 @@ Pay with x402, MPP, or pre-loaded credits — the same `x402c_…` API key and p
 **x402 Currency:** USDC (Base/Solana) • USDm (MegaETH) • USDG (Robinhood Chain)
 **MPP Methods:** Tempo • Stripe/card when enabled by the service
 **Credits:** Pre-load USD via x402 topup, then provision/extend (`use_credits: true`) or call the Grid with `X-API-Key`
-**Protocol:** HTTP 402 Payment Required (`X-Payment` for x402, `Authorization: Payment` for MPP)
+**Protocol:** HTTP 402 Payment Required (x402 v2 `PAYMENT-SIGNATURE` or v1 `X-Payment`, `Authorization: Payment` for MPP)
 **$SGL:** native token, live on Solana — mint `5c4HyD2rSShqnTsf5z3SaoD2H3GE452u2CUuYjviBAGS` (staking secures the grid; see [staking.x402layer.cc](https://staking.x402layer.cc))
 
 This section below (Machines) covers provisioning. Jump to **[SGL Grid — Inference](#sgl-grid--inference)** for the OpenAI-compatible inference API.
@@ -479,8 +479,10 @@ Credits are scoped per wallet. If the cloud provider rejects the instance after 
    - MegaETH: USDm ERC-2612 `permit` (EIP-712) — gasless for the user, facilitator settles on-chain
    - Robinhood Chain: USDG `TransferWithAuthorization` (EIP-3009, EIP-712) — gasless for the user, facilitator settles on-chain in a single tx (domain `name="Global Dollar"`, `version="1"`, chainId `4663`)
    - Solana: signed SPL transfer transaction payload
-3. Script resends request with `X-Payment` header containing signed payload
+3. Script resends request with the signed payment: `PAYMENT-SIGNATURE` (x402 v2) when the 402 carried a `PAYMENT-REQUIRED` header, otherwise `X-Payment` (x402 v1)
 4. Server verifies payment, settles on-chain, provisions/extends instance
+
+**x402 v1 and v2.** The scripts read the v2 `PAYMENT-REQUIRED` header first (base64 JSON, amount in `amount`, networks as CAIP-2 such as `eip155:8453` and `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`) and fall back to the v1 JSON body (`maxAmountRequired`, `base` / `solana`). The signed payment inside is the same in both versions, so nothing changes for your wallet. Set `X402_WIRE=v1` to force v1. The shared helper is `scripts/x402_wire.py`. Successful paid replies may carry `PAYMENT-RESPONSE` (v2) or `X-PAYMENT-RESPONSE` (v1) with the settlement transaction.
 
 MegaETH uses an embedded facilitator (no external CDP dependency). The user signs an off-chain ERC-2612 permit, and the facilitator calls `permit()` + `transferFrom()` on MegaETH (~10ms blocks, near-zero gas).
 
@@ -491,6 +493,7 @@ For Solana, transient facilitator failures can happen. Retry once or twice if yo
 **After you have paid, never pay again for the same request:**
 - `HTTP 202` with `pending: true`: you paid and the machine exists, but its delivery is still being confirmed. The body is the full order (save any one-time keys in it). Poll `instance_details.py <order_id>` (or `agent_pod.py get <pod_id>`). Do not re-provision.
 - `HTTP 409` with code `settlement_pending`: the payment outcome is not known yet and it may have moved. Do not pay again. The server checks the chain and either delivers or credits the amount to your balance automatically.
+- A timeout or `HTTP 5xx` after the payment was sent: the scripts report `pending: true`. The payment may have moved. Do not sign a new payment; resend the same one or check the order first.
 
 ## MPP Payment Flow
 
@@ -505,7 +508,7 @@ Notes:
 - `POST /compute/provision` can be paid via MPP without wallet auth. In that case the response includes `management_api_key`; store it because it is shown once and is required for later management.
 - `POST /compute/instances/:id/extend` via MPP requires compute auth, usually `X-API-Key: $COMPUTE_API_KEY`.
 - `POST /compute/instances/:id/resize` uses compute auth only. It preserves remaining prepaid value by changing expiry instead of charging again.
-- x402 remains fully supported through the Python scripts and `X-Payment` header flow.
+- x402 remains fully supported through the Python scripts (v2 `PAYMENT-SIGNATURE` or v1 `X-Payment`).
 - MPP methods are service-configured. Tempo is used by default by `mppx`; Stripe/card requires a Stripe-capable MPP client/config.
 
 ---

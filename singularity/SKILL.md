@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.13.0
+version: 1.14.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
