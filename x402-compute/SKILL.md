@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.36.0
+version: 1.37.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -230,6 +230,7 @@ reference you need).
 | "join the grid & earn", "run a node", "provide compute" | `sgl` CLI or Singularity Node app (see below) | `references/node-operator.md` |
 | **"use Claude Code with the grid"**, "Anthropic-compatible API", "Anthropic SDK on open models", "/v1/messages" | curl / Anthropic SDK / Claude Code → `grid.x402compute.cc` (`ANTHROPIC_BASE_URL`) | **`references/grid-anthropic-messages.md`** |
 | "run inference on the grid", "confidential/TEE OpenAI-compatible inference" | curl / any OpenAI SDK → `grid.x402compute.cc` | `references/api-reference.md` |
+| **"plan a flow of paid APIs for a goal"**, "which x402 services can do this job", "flow planner API" | curl or any x402 client → `POST https://compute.x402layer.cc/compute/flows/plan` ($0.02 per plan: x402 Base/Solana, MPP or credits; plans only) | **`references/flow-planner.md`** |
 | **"multimodal embeddings"**, "EmbeddingGemma 2", "embed image/audio/video", "mixed media vectors" | **`grid_embeddings.py`** → `POST /v1/embeddings` | **`references/multimodal-embeddings.md`** |
 | **"local embeddings"**, "embed media on my Mac", "Node app embeddings" | Singularity Node app → Local → Embeddings | **`references/multimodal-embeddings.md`** |
 | **"speech to text"**, "transcribe audio", "Whisper STT", "Grid transcription" | **`grid_transcription.py`** or official SDK → reserve + sealed `POST /v1/audio/transcriptions` | **`references/transcription.md`** |
