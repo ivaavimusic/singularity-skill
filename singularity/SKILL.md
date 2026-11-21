@@ -1,6 +1,6 @@
 ---
 name: singularity
-version: 1.12.0
+version: 1.13.0
 description: |
   singularity is the portable full-platform skill for x402 Studio and Singularity Layer.
   It helps agents pay for APIs with USDC, deploy monetized endpoints,
@@ -9,7 +9,7 @@ description: |
   Use this skill when the user asks to "create x402 endpoint",
   "deploy monetized API", "pay for API with USDC", "check x402 credits",
   "consume API credits", "list endpoint on marketplace", "buy API credits",
-  "topup endpoint", "browse x402 marketplace", "set up webhook",
+  "topup endpoint", "browse x402 marketplace", "plan a flow of x402 services", "set up webhook",
   "receive payment notifications", "manage endpoint webhook",
   "verify webhook payment", "verify payment genuineness",
   "integrate crypto payments into my app", "add USDC payments to my platform",
@@ -68,6 +68,7 @@ Use this routing first, then load the relevant reference doc.
 | Integrate crypto payments into an app/platform | `create_endpoint.py`, `manage_webhook.py`, `verify_webhook_payment.py`, `consume_product.py`, `recharge_credits.py` | `references/payments-integration.md`, `references/webhooks-verification.md`, `references/agentic-endpoints.md` |
 | Pay/consume endpoint or product | `pay_base.py`, `pay_solana.py`, `consume_credits.py`, `consume_product.py`, `ows_cli.py` | `references/pay-per-request.md`, `references/credit-based.md`, `references/agentkit-benefits.md`, `references/openwallet-ows.md` |
 | Discover/search marketplace | `discover_marketplace.py` | `references/marketplace.md`, `references/agentkit-benefits.md` |
+| Plan a flow of paid services for a goal ($0.02 per plan; x402 Base/Solana, MPP or credits) | `POST https://compute.x402layer.cc/compute/flows/plan` (curl or any x402 client) | `references/flow-planner.md` |
 | Create/edit/list endpoint | `create_endpoint.py`, `manage_endpoint.py`, `list_on_marketplace.py`, `topup_endpoint.py` | `references/agentic-endpoints.md`, `references/marketplace.md`, `references/agentkit-benefits.md` |
 | Manage dashboard/platform control plane with PAT-backed MCP access or owner-linked dashboard API keys | `manage_campaign.py`, `manage_endpoint.py`, `manage_webhook.py`, plus `Singularity MCP` tools such as `list_my_endpoints`, `list_my_campaigns`, `create_campaign`, `update_campaign`, `update_endpoint`, `list_my_products`, `update_product`, `set_webhook`, `remove_webhook`, `request_endpoint_creation_payment` | `references/mcp-control-plane.md`, `references/agentic-endpoints.md`, `references/marketplace.md` |
 | Configure/verify webhooks | `manage_webhook.py`, `verify_webhook_payment.py` | `references/webhooks-verification.md` |
