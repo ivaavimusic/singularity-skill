@@ -99,6 +99,7 @@ A step with `pick: null` means no service does that step yet.
 | 402 | Payment needed, or settlement failed | Nothing was taken. Pay (again) with the same or a new authorization. |
 | 409 `settlement_pending` | The x402 payment was submitted but not confirmed | Do NOT pay again. Keep the `reference`. If it confirms later, $0.02 of credits goes to the paying wallet. |
 | 409 `payment_in_use` | That signed payment was already used | Do not resend it. |
+| 409 `idempotency_key_used` | That Idempotency-Key already paid for a plan that is no longer kept (24 hours) | Use a new key for a new plan. You were not charged again. |
 | 503 with `retry_token` | MPP took the payment but no usable plan came back | Send the same request with `X-Plan-Retry: <retry_token>` and no payment, within 24 hours, for one plan free. |
 | 503 `charged: "unknown"` (credits) | The credits charge could not be confirmed | Retry with the same `Idempotency-Key` and body. It is never charged twice. |
 | 429 | Rate or daily limit | Nothing was taken. Wait and retry. |
