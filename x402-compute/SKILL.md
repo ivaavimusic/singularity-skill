@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.40.0
+version: 1.41.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
