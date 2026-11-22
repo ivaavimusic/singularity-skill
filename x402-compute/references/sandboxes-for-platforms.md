@@ -16,8 +16,7 @@ with **`pods:control:write`** (a sandbox runs commands) and **`spend`**, or a wa
 |------|-------|
 | Awake time | **$0.012 per hour**, charged when each hour starts |
 | Disk (12 GB, kept while asleep) | **$1.50 a month per sandbox**, charged as $0.05 per started day |
-| Our models (OpenCode, Pi) | per call from credits, as everywhere else |
-| Your users' own keys (any harness) | free on our side |
+| AI | your users' own keys or sign-in: free on our side (our hosted models are not offered on platform sandboxes yet) |
 
 A sandbox sleeps after 15 idle minutes and wakes on the next request in about 2 seconds, so a user
 who works 2 hours a day costs about $0.72 + $1.50 = **$2.22 a month**. No monthly base fee.
@@ -58,15 +57,16 @@ Per-user overrides: `PUT /platform/end-users/{end_user_id}` with `{"monthly_cap_
 curl -X POST https://compute.x402layer.cc/pods/v1/sandboxes \
   -H "X-API-Key: $SGL_API_KEY" -H "content-type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"harness": "opencode", "ai_mode": "managed",
-       "end_user_id": "cust_8341", "tags": {"plan": "pro", "team": "acme"}}'
+  -d '{"harness": "opencode", "ai_mode": "own_key", "api_key": "sk-or-...",
+       "model": "openai/gpt-6.1-sol", "end_user_id": "cust_8341", "tags": {"plan": "pro", "team": "acme"}}'
 ```
 
 - `Idempotency-Key` is required: retry with the SAME key and you get the same sandbox, never a
   second charge.
-- `harness`: `claude-code`, `codex`, `opencode`, `pi`. `ai_mode`: `managed` (our models from your
-  credits; OpenCode and Pi), `own_key` (`api_key`, and for OpenCode/Pi `base_url` + `model`). Claude
-  Code runs only on the user's own Anthropic key or their own sign-in in the terminal.
+- `harness`: `claude-code`, `codex`, `opencode`, `pi`. `ai_mode`: `own_key` (`api_key`; for
+  OpenCode/Pi also `model` and optionally `base_url`, default OpenRouter) or `own_login` (Claude Code:
+  the user signs in to their own Claude account in the terminal). The key stays on our side (the box
+  gets a proxy token), but anyone using the sandbox can spend through it, so give each user their own.
 - `end_user_id`: your id for the user (1 to 128 of `A-Z a-z 0-9 . _ : @ | + = -`). Fixed for the
   sandbox's life.
 - `tags`: up to 16 string pairs, replaceable later with `PATCH /sandboxes/{id}`.
@@ -87,7 +87,7 @@ GET    /sandboxes/{id}                             # state, billing, awake hours
 PATCH  /sandboxes/{id}      {"tags": {...}}
 POST   /sandboxes/{id}/wake        POST /sandboxes/{id}/sleep
 DELETE /sandboxes/{id}
-GET    /usage/sandboxes?month=2026-11              # your statement, one row per end user
+GET    /usage/sandboxes?month=2026-11              # statement: one row per end user (settled) + committed_usd (what the cap counts)
 ```
 
 Run commands, read and write files, open preview links and mint OpenAI-compatible keys with the
@@ -142,7 +142,7 @@ curl -X POST https://compute.x402layer.cc/pods/v1/sandboxes/{id}/embed-token \
 - Only your `embed_origins` may frame it. The page has no branding.
 - The token is for that one sandbox, terminal only, 60 s to 1 h (default 15 min). It sits in the URL
   fragment, so it never reaches a server log.
-- Revoke every link for a sandbox: `POST /sandboxes/{id}/embed-token/revoke`.
+- Revoke every link for a sandbox: `POST /sandboxes/{id}/embed-token/revoke`. This stops new connections; a terminal already open stays until it closes (after 10 idle minutes at most).
 - Your own terminal UI instead: `POST ticket_url` with `Authorization: Bearer <token>` (CORS open to
   your `embed_origins`) returns `{ws_url}`: text frame `{"cols":..,"rows":..}` resizes, binary
   frames are the terminal's input and output.
@@ -157,13 +157,13 @@ TypeScript:
 const API = "https://compute.x402layer.cc/pods/v1";
 const h = { "X-API-Key": process.env.SGL_API_KEY!, "content-type": "application/json" };
 
-export async function sandboxFor(userId: string) {
+export async function sandboxFor(userId: string, userKey: string) {
   const list = await (await fetch(`${API}/sandboxes?end_user_id=${encodeURIComponent(userId)}`, { headers: h })).json();
   if (list.sandboxes?.length) return list.sandboxes[0];
   const r = await fetch(`${API}/sandboxes`, {
     method: "POST",
     headers: { ...h, "Idempotency-Key": crypto.randomUUID() },  // reuse the same key if you retry this request
-    body: JSON.stringify({ harness: "opencode", ai_mode: "managed", end_user_id: userId }),
+    body: JSON.stringify({ harness: "opencode", ai_mode: "own_key", api_key: userKey, model: "openai/gpt-6.1-sol", end_user_id: userId }),
   });
   if (!r.ok) throw new Error(`${r.status} ${JSON.stringify(await r.json())}`);
   return (await r.json()).sandbox;
@@ -182,12 +182,13 @@ import os, uuid, requests
 API = "https://compute.x402layer.cc/pods/v1"
 H = {"X-API-Key": os.environ["SGL_API_KEY"]}
 
-def sandbox_for(user_id: str) -> dict:
+def sandbox_for(user_id: str, user_key: str) -> dict:
     found = requests.get(f"{API}/sandboxes", params={"end_user_id": user_id}, headers=H).json()["sandboxes"]
     if found:
         return found[0]
     r = requests.post(f"{API}/sandboxes", headers={**H, "Idempotency-Key": str(uuid.uuid4())},
-                      json={"harness": "opencode", "ai_mode": "managed", "end_user_id": user_id})
+                      json={"harness": "opencode", "ai_mode": "own_key", "api_key": user_key,
+                            "model": "openai/gpt-6.1-sol", "end_user_id": user_id})
     r.raise_for_status()
     return r.json()["sandbox"]
 
