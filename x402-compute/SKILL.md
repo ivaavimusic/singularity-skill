@@ -1,11 +1,11 @@
 ---
 name: x402-compute
-version: 1.39.0
+version: 1.40.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
   "pod webhooks", "pod events",
-  "spin up a cloud server", "list compute plans", "browse GPU pricing",
+  "spin up a cloud server", "list compute plans", "browse GPU pricing", "rent a GPU for an hour",
   "deploy AI machine", "one-click GPU running an LLM", "deploy a private LLM endpoint",
   "OpenRouter-ready endpoint", "agent deploy GPU", "spin up my own OpenAI-compatible endpoint",
   "extend compute instance", "resize compute instance", "destroy server instance", "check instance status",
@@ -302,6 +302,15 @@ Browse Plans → Choose Provider/Plan → Provision (x402/MPP/Credits) → Activ
 ```
 
 Instances expire after their prepaid duration. Extend before expiry to keep them running.
+
+**Rental length.** 1 day or more by default. When `GET /compute/plans` returns `"hourly": {"enabled": true}`, machines and GPUs can also be rented **by the hour (1 hour minimum)**: under 24 hours costs the hourly price **+15% for machines, +20% for GPUs** (each plan's `is_gpu` says which). 1 day or more is the normal price. Same for extensions under 24 hours. Agent Pods and Grid node deploys stay at 24 hours or more. Send `max_total_usd` to cap the price (409, nothing charged, if it is higher).
+
+```bash
+# 3 hours on a GPU (only when hourly is on; the 402 shows the total incl. +20%)
+python {baseDir}/scripts/provision.py <gpu_plan_id> <region> --hours 3
+# Extend by 2 hours
+python {baseDir}/scripts/extend_instance.py <instance_id> --hours 2
+```
 
 ---
 

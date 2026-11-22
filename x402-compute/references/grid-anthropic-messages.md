@@ -7,8 +7,7 @@ Grid models. Same auth, same credits, same x402 payment, same node routing and e
 
 - **Base URL:** `https://grid.x402compute.cc` (no `/v1` suffix: Anthropic clients add it)
 - **Auth:** `x-api-key: x402c_...` or `Authorization: Bearer x402c_...` (credits of the key
-  owner), a signed-in session token, or pay per request on Solana with `X-Payment` (x402 v1) or
-  `PAYMENT-SIGNATURE` (x402 v2)
+  owner), a signed-in session token, or pay per request with `X-Payment` (x402)
 - **Model ids:** Grid model ids such as `qwen-2.5-32b`, never Claude ids
 
 ## Endpoints
