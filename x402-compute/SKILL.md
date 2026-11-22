@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.39.0
+version: 1.40.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -245,6 +245,7 @@ reference you need).
 | **"call my pod via the OpenAI API"**, "give my pod an OpenAI-compatible endpoint", "get an API key for my agent pod" | **`agent_pod.py create-key` then `agent_pod.py chat`** | **`references/agent-pods.md`** |
 | **"telegram community manager"**, "TGPod", "moderate my telegram group", "bot that answers members and removes scams", "discord community manager" (soon) | **`agent_pod.py templates`** then **`agent_pod.py deploy --template community-manager`** | **`references/agent-pods.md`** |
 | **"run a command in my pod"**, "read/write files in my pod", "expose a port from my pod", "pod sandbox", "clone my pod" | **`pod_sandbox.py`** (exec/files/ports) or `POST /pods/v1/pods/{id}/clone` | **`references/agent-pods-api.md`** (Sandbox) |
+| **"give each of my users a coding sandbox"**, "sandboxes for my platform", "create a sandbox for my customer", "tag sandboxes by user", "cap sandbox spend", "embed a sandbox terminal" | **`/pods/v1/platform`** + **`/pods/v1/sandboxes`** (end_user_id, tags, caps, webhooks, embed) | **`references/sandboxes-for-platforms.md`** |
 | **"use my Coding sandbox from my terminal"**, "connect to my coding sandbox", "run a command in my coding sandbox", "OpenAI-compatible key for my coding agent" | **`singularity sandbox`** CLI (`connect`/`exec`/`files`/`key`) or `POST /pods/{id}/coding/terminal` + `/pods/v1` exec/files/keys | **`references/coding-sandbox.md`** |
 | **"deploy a Pi pod"**, "HermPod", "pod with my own AI key and fallbacks", "Venice / 0G / OpenRouter key on a pod" | `agent_pod.py deploy` (`agent_id` `pi` / `hermes`) or `/pods/v1` (`engine` `pipod` / `hermpod`, `ai.fallbacks`) | **`references/agent-pods-api.md`** |
 | **"integrate agent pods into my product"**, "pods over an API key", "create pods for my customers", "pod webhooks / events", "no wallet, just an API key" | `curl` / `PodsClient` (both SDKs) → `/pods/v1` | **`references/agent-pods-api.md`** |
@@ -925,6 +926,7 @@ For full endpoint details, see:
 - [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
 - [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
 - [references/agent-pods-api.md](references/agent-pods-api.md): the **`/pods/v1` API-key surface** for building ON pods rather than clicking them: idempotent create, lifecycle actions, tasks, connectors, wallet, backups, an account **event log** and **signed webhooks**, plus engines (`clawpod`, `hermpod`, `pipod`), BYOK with fallbacks, and the **Sandbox** (exec, files, ports, clone). Use it when the caller holds an `x402c_…` key and no wallet; `agent-pods.md` remains the signature/OWS path.
+- [references/sandboxes-for-platforms.md](references/sandboxes-for-platforms.md): **coding sandboxes for your platform**: create sandboxes for your own users over `/pods/v1/sandboxes`, tag them with your customer id, pay as you go ($0.012/awake hour + $1.50/month disk), monthly caps per platform and per user, webhooks, embedded terminal with no branding
 - [references/coding-sandbox.md](references/coding-sandbox.md): use a **Coding sandbox** (Claude Code, Codex, OpenCode or Pi on its own computer) from anywhere: `singularity sandbox` CLI, the terminal WebSocket, exec/files, and an OpenAI-compatible key for its coding agent
 - [references/grid-anthropic-messages.md](references/grid-anthropic-messages.md): Anthropic-compatible `/v1/messages`, `count_tokens`, Anthropic-shaped `/v1/models`, Claude Code setup
 - [references/node-operator.md](references/node-operator.md) — run a grid node (provide compute, earn)
