@@ -4,7 +4,7 @@ Base URL: `https://compute.x402layer.cc`
 
 Paid endpoints support both protocols:
 
-- **x402**: server returns JSON `accepts[]`; client retries with `X-Payment`.
+- **x402**: server returns JSON `accepts[]` (v1) and, where enabled, a `PAYMENT-REQUIRED` header (v2, base64 JSON). Client retries with `PAYMENT-SIGNATURE` (v2) or `X-Payment` (v1). Both carry the same signed payload.
 - **MPP**: server returns `WWW-Authenticate: Payment`; client retries with `Authorization: Payment ...`; success includes `Payment-Receipt`.
 
 Compute plans can be backed by multiple providers:
