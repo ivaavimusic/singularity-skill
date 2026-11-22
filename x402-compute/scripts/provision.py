@@ -63,6 +63,7 @@ def provision_instance(
     model_id: Optional[str] = None,
     mode: Optional[str] = None,
     skip_confirm: bool = False,
+    hours: int = 0,
 ) -> dict:
     """Provision a compute instance with x402 payment.
 
@@ -74,7 +75,12 @@ def provision_instance(
                         Sent as the nested deploy_node object {model_id}.
     ai_machine and deploy_node are mutually exclusive.
     """
-    if days > 0:
+    if hours > 0:
+        # By the hour: only when GET /compute/plans shows "hourly": {"enabled": true}. Under 24
+        # hours costs the hourly price +15% (machines) or +20% (GPUs); the 402 shows the total.
+        prepaid_hours = hours
+        duration_label = f"{hours} hour(s)"
+    elif days > 0:
         prepaid_hours = days * 24
         duration_label = f"{days} day(s)"
     else:
@@ -255,6 +261,7 @@ if __name__ == "__main__":
     duration = parser.add_mutually_exclusive_group()
     duration.add_argument("--months", type=int, default=0, help="Duration in months (default: 1 if --days not set)")
     duration.add_argument("--days", type=int, default=0, help="Duration in days (minimum: 1)")
+    duration.add_argument("--hours", type=int, default=0, help="Duration in hours (from 1 when hourly rentals are on; under 24h costs +15%% machines / +20%% GPUs)")
     parser.add_argument("--os-id", type=int, default=2284, help="OS image ID (default: 2284 = Ubuntu 24.04)")
     parser.add_argument("--label", default="x402-instance", help="Instance label")
     parser.add_argument("--network", default="base", choices=["base", "solana", "robinhood", "arc"], help="Payment network (base/solana/arc = USDC, robinhood = USDG; direct arc payments min $5)")
@@ -282,8 +289,8 @@ if __name__ == "__main__":
             print(f"Failed to read SSH key file: {exc}")
             sys.exit(1)
 
-    # Default to 1 month if neither --days nor --months specified
-    months = args.months if args.months > 0 else (0 if args.days > 0 else 1)
+    # Default to 1 month if none of --hours, --days, --months is specified
+    months = args.months if args.months > 0 else (0 if (args.days > 0 or args.hours > 0) else 1)
     days = args.days
 
     result = provision_instance(
@@ -298,6 +305,7 @@ if __name__ == "__main__":
         model_id=args.model_id,
         mode=args.mode,
         skip_confirm=args.yes,
+        hours=args.hours,
     )
     if "error" in result:
         print(json.dumps(result, indent=2))
