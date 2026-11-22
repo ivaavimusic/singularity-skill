@@ -207,8 +207,8 @@ Provision a new compute instance. Returns `402 Payment Required` with x402 and, 
 ```
 
 **Notes:**
-- `prepaid_hours` minimum is **24** (1 day). Use `24` for daily, `72` for 3 days, `168` for 1 week, `720` for 1 month, etc.
-- **By the hour:** when `GET /compute/plans` returns `"hourly": {"enabled": true, "min_hours": 1, ...}`, Machines and GPUs can be rented from **1 hour**. Under 24 hours costs the plan's hourly price **+15% for machines, +20% for GPUs** (`is_gpu` on each plan says which), rounded to the cent. 24 hours or more is the normal price. Extensions under 24 hours (`extend_hours`) are priced the same way. Agent Pods and Grid node deploys (`deploy_node`) keep the 24 hour minimum. Hourly rentals are torn down within about a minute of expiry.
+- `prepaid_hours` minimum is **24** (1 day) unless hourly rentals are on (below). Use `24` for daily, `72` for 3 days, `168` for 1 week, `720` for 1 month, etc.
+- **By the hour:** when `GET /compute/plans` returns `"hourly": {"enabled": true, "min_hours": 1, "min_hours_by_kind": {"machine": 1, "gpu": 2}, ...}`, Machines can be rented from **1 hour**, GPUs and AI machines from **2 hours** (1 hour on a GPU is refused with 400, nothing charged). Under 24 hours costs the plan's hourly price **+15% for machines, +20% for GPUs** (`is_gpu` on each plan says which), rounded to the cent. 24 hours or more is the normal price. Extensions under 24 hours (`extend_hours`) are priced the same way, with the same minimums (GPUs and AI machines 2 hours). Agent Pods and Grid node deploys (`deploy_node`) keep the 24 hour minimum. Hourly rentals are torn down within about a minute of expiry.
 - `max_total_usd` (optional): the most you agree to pay. A higher price is refused with `409` and `quote_usd`, nothing charged.
 - Provide `ssh_public_key` to enable SSH access. Passwords are not returned by the API.
 - If you do not provide an SSH key, use one-time fallback endpoint `POST /compute/instances/:id/password`.

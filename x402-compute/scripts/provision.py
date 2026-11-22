@@ -261,7 +261,7 @@ if __name__ == "__main__":
     duration = parser.add_mutually_exclusive_group()
     duration.add_argument("--months", type=int, default=0, help="Duration in months (default: 1 if --days not set)")
     duration.add_argument("--days", type=int, default=0, help="Duration in days (minimum: 1)")
-    duration.add_argument("--hours", type=int, default=0, help="Duration in hours (from 1 when hourly rentals are on; under 24h costs +15%% machines / +20%% GPUs)")
+    duration.add_argument("--hours", type=int, default=0, help="Duration in hours when hourly rentals are on: machines from 1, GPUs and AI machines from 2; under 24h costs +15%% machines / +20%% GPUs")
     parser.add_argument("--os-id", type=int, default=2284, help="OS image ID (default: 2284 = Ubuntu 24.04)")
     parser.add_argument("--label", default="x402-instance", help="Instance label")
     parser.add_argument("--network", default="base", choices=["base", "solana", "robinhood", "arc"], help="Payment network (base/solana/arc = USDC, robinhood = USDG; direct arc payments min $5)")
