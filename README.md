@@ -3,7 +3,7 @@
 Portable skills.sh distribution for x402 Studio and the Singularity Layer. Two skills:
 
 - **`singularity`** (`v1.14.0`): full-platform marketplace & payments: pay/consume APIs in USDC, deploy monetized endpoints, credits, webhooks, marketplace listings, the paid **flow planner** (describe a job, get a priced flow of x402 services for $0.02), ERC-8004 agent registration, AWAL/OWS, multi-chain.
-- **`x402-compute`** (`v1.40.0`): the **Singularity Cloud Network**: rent GPU/VPS instances (SGL Machines), run confidential inference (OpenAI-compatible and Anthropic-compatible, including Claude Code), multimodal embeddings and release-gated client-sealed speech-to-text (SGL Grid), operate a node to earn USDC + SGL, deploy Agent Pods (ClawPod, HermPod or Pi; run commands, edit files and open ports through the Sandbox API), use a **Coding sandbox** from your own terminal or any OpenAI client, buy generated **fine-tuning datasets** and **train a model on them (Training Lab)** over x402, and back up / migrate agents with **Agent Vault**.
+- **`x402-compute`** (`v1.41.0`): the **Singularity Cloud Network**: rent GPU/VPS instances (SGL Machines), run confidential inference (OpenAI-compatible and Anthropic-compatible, including Claude Code), multimodal embeddings and release-gated client-sealed speech-to-text (SGL Grid), operate a node to earn USDC + SGL, deploy Agent Pods (ClawPod, HermPod or Pi; run commands, edit files and open ports through the Sandbox API), use a **Coding sandbox** from your own terminal or any OpenAI client, buy generated **fine-tuning datasets** and **train a model on them (Training Lab)** over x402, and back up / migrate agents with **Agent Vault**.
 
 ## Install
 
@@ -37,6 +37,7 @@ python3 -m unittest discover -s tests/x402-compute
 
 ## Changelog
 
+- **x402-compute 1.41.0:** GPUs and AI machines rent by the hour from 2 hours (machines still from 1); a GPU for 1 hour is refused before payment.
 - **x402-compute 1.40.0 (hourly Machines/GPUs):** rent from 1 hour when `GET /compute/plans` shows `hourly` on; under 24 hours costs the hourly price +15% (machines) / +20% (GPUs). `provision.py --hours N`, sub-day `extend_instance.py --hours N`, optional `max_total_usd` price cap.
 - **singularity 1.14.0 / x402-compute 1.39.0 (x402 v2):** the paying scripts read the v2 `PAYMENT-REQUIRED` header first and pay with `PAYMENT-SIGNATURE`; without it they pay v1 `X-Payment` exactly as before (`X402_WIRE=v1` forces v1). Base and Solana (and Robinhood / Arc in x402-compute). Shared helper `scripts/x402_wire.py` (standard library only) is byte-identical to the official @x402/core encoding. After a payment is sent, a timeout, 202 or 5xx is reported as `pending: true`, never a reason to sign again. `consume_product.py` now buys from the live `api.x402layer.cc/p/<slug>` route (Base or Solana) instead of sending a raw-JSON header to the retired `/storage/product/` path.
 
