@@ -9,6 +9,7 @@ You can use it from your own terminal, from scripts, and from any OpenAI client:
 | You want to | Use |
 |-------------|-----|
 | A full shell in the sandbox, from your terminal | `singularity sandbox connect` |
+| Real SSH: `ssh`, `scp`, `sftp`, port forwarding, VS Code / Cursor Remote-SSH | `singularity sandbox ssh-config`, then `ssh sgl-<name>` |
 | Run one command, read or write a file | `singularity sandbox exec / files / get / put`, or the REST routes below |
 | Talk to the sandbox's coding agent from any app | an OpenAI-compatible key: `singularity sandbox key` |
 
@@ -18,11 +19,11 @@ Everything below uses the compute API at `https://compute.x402layer.cc`.
 
 ## Auth
 
-- **A compute API key** (`x402c_...`) from Settings > API keys, sent as `X-API-Key`. It needs the
-  Agent Pods permission "Read and write pod files, install skills, create and restore backups"
+- **A compute API key** (`x402c_...`) from Settings > API keys, sent as `X-API-Key`. It needs
+  Compute "Extend, resize, destroy" (`compute:write`) and the Agent Pods permission "Read and write pod files, install skills, create and restore backups"
   (**`pods:control:write`**).
 - **Or a Solana keypair** (wallet signature, same scheme as the rest of the compute API).
-- Keys made from a Google, GitHub or X login can use the terminal and the OpenAI-compatible keys.
+- Keys made from a Google, GitHub or X login can use the terminal, SSH and the OpenAI-compatible keys.
   `exec` and files need a key from a wallet login.
 
 ---
@@ -53,10 +54,36 @@ singularity sandbox revoke-key <key-id>
 
 ---
 
+## SSH, VS Code and Cursor (available from CLI 0.6.0)
+
+```bash
+singularity sandbox ssh-config 99a7         # key + a Host entry in ~/.ssh/config; prints the name, e.g. sgl-my-sandbox
+ssh sgl-my-sandbox                          # a shell as the sandbox user
+scp ./data.csv sgl-my-sandbox:workspace/    # copy files in or out
+ssh -L 3000:localhost:3000 sgl-my-sandbox   # the sandbox's port 3000 on your machine
+singularity sandbox ssh 99a7 -- -L 3000:localhost:3000   # the same without any config
+```
+
+- There is no SSH port to dial. The CLI is ssh's ProxyCommand: it asks for a single-use 60-second
+  ticket bound to your public key (`POST /pods/<id>/coding/ssh` with `{"public_key": "ssh-ed25519 ..."}`)
+  and carries the SSH stream over the same WebSocket path as the terminal. The sandbox starts an SSH
+  server for that one connection, which accepts only that key. No passwords; agent and X11
+  forwarding are off; you log in as the sandbox user (never root).
+- VS Code or Cursor: install **Remote - SSH**, then **Connect to Host** and pick the name. The first
+  connection can take a minute while the sandbox wakes: set `"remote.SSH.connectTimeout": 60`.
+- `ssh-config` makes `~/.singularity/ssh/id_ed25519` (the private half stays on your computer) and
+  saves the API key it ran with to `~/.singularity/credentials.json` (mode 600) so editors, which
+  start ssh without your shell's environment, can connect. `--no-save-key` skips that; `--remove`
+  takes the entry out again.
+- An open connection keeps the sandbox awake (awake hours count as usual); it sleeps after you disconnect.
+- A sandbox made before SSH existed gets it the first time you connect (about a minute, once).
+
+---
+
 ## Terminal over WebSocket
 
 The same path the browser terminal uses: a single-use ticket and a WebSocket relayed through the
-sandbox's own outbound connection. No SSH, no open port.
+sandbox's own outbound connection. No open port.
 
 ```bash
 curl -s -X POST "https://compute.x402layer.cc/pods/$POD/coding/terminal" -H "X-API-Key: $SGL_API_KEY"

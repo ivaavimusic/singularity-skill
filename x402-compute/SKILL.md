@@ -1,6 +1,6 @@
 ---
 name: x402-compute
-version: 1.41.0
+version: 1.42.0
 description: |
   This skill should be used when the user asks to "provision GPU instance",
   "integrate agent pods over an API", "create pods for my customers",
@@ -245,7 +245,7 @@ reference you need).
 | **"call my pod via the OpenAI API"**, "give my pod an OpenAI-compatible endpoint", "get an API key for my agent pod" | **`agent_pod.py create-key` then `agent_pod.py chat`** | **`references/agent-pods.md`** |
 | **"telegram community manager"**, "TGPod", "moderate my telegram group", "bot that answers members and removes scams", "discord community manager" (soon) | **`agent_pod.py templates`** then **`agent_pod.py deploy --template community-manager`** | **`references/agent-pods.md`** |
 | **"run a command in my pod"**, "read/write files in my pod", "expose a port from my pod", "pod sandbox", "clone my pod" | **`pod_sandbox.py`** (exec/files/ports) or `POST /pods/v1/pods/{id}/clone` | **`references/agent-pods-api.md`** (Sandbox) |
-| **"use my Coding sandbox from my terminal"**, "connect to my coding sandbox", "run a command in my coding sandbox", "OpenAI-compatible key for my coding agent" | **`singularity sandbox`** CLI (`connect`/`exec`/`files`/`key`) or `POST /pods/{id}/coding/terminal` + `/pods/v1` exec/files/keys | **`references/coding-sandbox.md`** |
+| **"use my Coding sandbox from my terminal"**, "connect to my coding sandbox", "SSH into my coding sandbox", "open my sandbox in VS Code / Cursor", "run a command in my coding sandbox", "OpenAI-compatible key for my coding agent" | **`singularity sandbox`** CLI (`connect`/`ssh-config`/`ssh`/`exec`/`files`/`key`) or `POST /pods/{id}/coding/terminal` / `coding/ssh` + `/pods/v1` exec/files/keys | **`references/coding-sandbox.md`** |
 | **"deploy a Pi pod"**, "HermPod", "pod with my own AI key and fallbacks", "Venice / 0G / OpenRouter key on a pod" | `agent_pod.py deploy` (`agent_id` `pi` / `hermes`) or `/pods/v1` (`engine` `pipod` / `hermpod`, `ai.fallbacks`) | **`references/agent-pods-api.md`** |
 | **"integrate agent pods into my product"**, "pods over an API key", "create pods for my customers", "pod webhooks / events", "no wallet, just an API key" | `curl` / `PodsClient` (both SDKs) → `/pods/v1` | **`references/agent-pods-api.md`** |
 | **"back up my agent"**, "restore/migrate my agent", "agent vault", "snapshot my agent's memory" | **`npx @singularity-layer/agentvault`** (`login`, `backup --all`, `restore`) | **`references/agent-vault.md`** |
@@ -303,7 +303,7 @@ Browse Plans → Choose Provider/Plan → Provision (x402/MPP/Credits) → Activ
 
 Instances expire after their prepaid duration. Extend before expiry to keep them running.
 
-**Rental length.** 1 day or more by default. When `GET /compute/plans` returns `"hourly": {"enabled": true}`, machines and GPUs can also be rented **by the hour: machines from 1 hour, GPUs and AI machines from 2 hours** (`hourly.min_hours_by_kind`): under 24 hours costs the hourly price **+15% for machines, +20% for GPUs** (each plan's `is_gpu` says which). 1 day or more is the normal price. Same for extensions under 24 hours (GPUs and AI machines extend by 2 hours or more). Agent Pods and Grid node deploys stay at 24 hours or more. Send `max_total_usd` to cap the price (409, nothing charged, if it is higher).
+**Rental length.** 1 day or more by default. When `GET /compute/plans` returns `"hourly": {"enabled": true}`, machines and GPUs can also be rented **by the hour: machines from 1 hour, GPUs and AI machines from 2 hours** (`hourly.min_hours_by_kind`): under 24 hours costs the hourly price **+15% for machines, +20% for GPUs and AI machines** (each plan's `is_gpu` says which; an AI machine pays +20% even on a CPU plan). 1 day or more is the normal price. Same for extensions under 24 hours (GPUs and AI machines extend by 2 hours or more). Agent Pods and Grid node deploys stay at 24 hours or more. Send `max_total_usd` to cap the price (409, nothing charged, if it is higher).
 
 ```bash
 # 3 hours on a GPU (only when hourly is on; the 402 shows the total incl. +20%)
@@ -934,7 +934,7 @@ For full endpoint details, see:
 - [references/ai-machines.md](references/ai-machines.md) — AI Machines (one-click LLM GPU: modes, endpoint+key, control API, agent x402 deploy)
 - [references/agent-pods.md](references/agent-pods.md) — Agent Pods (deploy `POST /pods`, manage, wallet, and the OpenAI-compatible adapter: `sk-sglpod-int-*` keys + `/v1/chat/completions`)
 - [references/agent-pods-api.md](references/agent-pods-api.md): the **`/pods/v1` API-key surface** for building ON pods rather than clicking them: idempotent create, lifecycle actions, tasks, connectors, wallet, backups, an account **event log** and **signed webhooks**, plus engines (`clawpod`, `hermpod`, `pipod`), BYOK with fallbacks, and the **Sandbox** (exec, files, ports, clone). Use it when the caller holds an `x402c_…` key and no wallet; `agent-pods.md` remains the signature/OWS path.
-- [references/coding-sandbox.md](references/coding-sandbox.md): use a **Coding sandbox** (Claude Code, Codex, OpenCode or Pi on its own computer) from anywhere: `singularity sandbox` CLI, the terminal WebSocket, exec/files, and an OpenAI-compatible key for its coding agent
+- [references/coding-sandbox.md](references/coding-sandbox.md): use a **Coding sandbox** (Claude Code, Codex, OpenCode or Pi on its own computer) from anywhere: `singularity sandbox` CLI, real SSH (ssh, scp, port forwarding, VS Code / Cursor Remote-SSH), the terminal WebSocket, exec/files, and an OpenAI-compatible key for its coding agent
 - [references/grid-anthropic-messages.md](references/grid-anthropic-messages.md): Anthropic-compatible `/v1/messages`, `count_tokens`, Anthropic-shaped `/v1/models`, Claude Code setup
 - [references/node-operator.md](references/node-operator.md) — run a grid node (provide compute, earn)
 - [references/openwallet-ows.md](references/openwallet-ows.md)
